@@ -35,6 +35,7 @@ class Sketch:
     def __init__(self, params, ):
 
         self.name = params['name']
+        self.centroid = params['centroid']
         self.points = self.generateSketch(params)
         self.inflated = self.inflatePoints(params)
         self.labels = ['East', 'NorthEast', 'North', 'NorthWest',
