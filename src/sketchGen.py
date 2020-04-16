@@ -32,7 +32,9 @@ __status__ = "Development"
 
 class Sketch:
 
-    def __init__(self, params, ):
+    def __init__(self, params, seed=None):
+        if(seed is not None):
+            np.random.seed(seed)
 
         self.name = params['name']
         self.centroid = params['centroid']
@@ -41,9 +43,10 @@ class Sketch:
         self.labels = ['East', 'NorthEast', 'North', 'NorthWest',
                        'West', 'SouthWest', 'South', 'SouthEast']
         self.sm = Softmax()
-        self.sm.buildPointsModel(self.points)
+        self.sm.buildPointsModel(self.points, steepness=params['steepness'])
         self.sm_inf = Softmax()
-        self.sm_inf.buildPointsModel(self.inflated)
+        self.sm_inf.buildPointsModel(
+            self.inflated, steepness=params['steepness'])
         [self.joint, self.con_class, self.con_label] = self.labelClasses()
 
     def displayClasses(self, show=True):
@@ -73,7 +76,28 @@ class Sketch:
             event.xdata, event.ydata))
         point = [event.xdata, event.ydata]
         if(event.dblclick):
-            a = 0
+            class_test = np.zeros(shape=(self.sm.size))
+            for i in range(0, len(class_test)):
+                class_test[i] = self.sm.pointEvalND(i, point)
+
+            # print(class_test)
+
+            ans = {}
+            for l in self.labels:
+                ans[l] = 0
+                for i in range(0, len(class_test)):
+                    te = self.con_label[i]
+                    ans[l] += self.con_label[i][l]*class_test[i]
+
+            suma = sum(ans.values())
+            for k in ans.keys():
+                ans[k] /= suma
+
+            print("Outputing all label probabilities:")
+            for k, v in ans.items():
+                if(v > 0.009):
+                    print("P: {:0.2f}, L: {}".format(v, k))
+
         else:
             # Find just most likely class
             # Check all softmax classes
@@ -368,7 +392,7 @@ if __name__ == '__main__':
     np.random.seed(3)
 
     params = {'centroid': [4, 5], 'dist_nom': 2, 'dist_noise': .25,
-              'angle_noise': .3, 'pois_mean': 2, 'area_multiplier': 3, 'name': "Test"}
+              'angle_noise': .3, 'pois_mean': 2, 'area_multiplier': 3, 'name': "Test", 'steepness': 5}
     ske = Sketch(params)
 
     # ske.displayPoints(show=False)
