@@ -1,20 +1,20 @@
 "Landmarks":
   "Pond":
-    loc: [425,650]
+    loc: [615,75]
     radius: 18
 
   "Mountains": 
-    loc: [350,350]
+    loc: [500,500]
     radius: 100
 
   "Neighborhood": 
-    loc: [125,125]
+    loc: [175,825]
     radius: 110
 
   "Forest": 
-    loc: [190,585]
+    loc: [275,160]
     radius: 90
 
   "GrayHouse1": 
-    loc: [205,185]
+    loc: [290,735]
     radius: 10

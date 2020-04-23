@@ -1,0 +1,196 @@
+
+
+
+"Nodes":
+  0:
+    loc: [0,2.5]
+    neighbors: [1,23]
+
+  1:
+    loc: [1,2.5]
+    neighbors: [0,2,19]
+
+  2:
+    loc: [1,0]
+    neighbors: [1,3]
+
+  3:
+    loc: [3,0]
+    neighbors: [2,20,4]
+
+  4:
+    loc: [6,0]
+    neighbors: [3,5,6]
+
+  5:
+    loc: [8,0]
+    neighbors: [4,9]
+
+  6: 
+    loc: [6,1]
+    neighbors: [4,7]
+
+  7:
+    loc: [5.5,1]
+    neighbors: [6,8]
+
+  8:
+    loc: [5.5,2.5]
+    neighbors: [7,20,10]
+
+  9:
+    loc: [8,5]
+    neighbors: [5,10,11]
+
+  10:
+    loc: [5.5,5]
+    neighbors: [8,9,13,36]
+
+  11:
+    loc: [8,8]
+    neighbors: [9,12]
+
+  12:
+    loc: [5.5,8]
+    neighbors: [11,13,30]
+
+  13:
+    loc: [5.5,6.5]
+    neighbors: [12,10,14]
+
+  14:
+    loc: [3.5,6.5]
+    neighbors: [13,15]
+
+  15:
+    loc: [3.5,5.5]
+    neighbors: [14,16,35]
+
+  16:
+    loc: [3.5,5]
+    neighbors: [15,36]
+
+  17:
+    loc: [4.5,3]
+    neighbors: [36,18]
+
+  18:
+    loc: [2.5,3]
+    neighbors: [17,19,21]
+
+  19:
+    loc: [2.5,2.5]
+    neighbors: [1,18,20]
+
+  20:
+    loc: [3,2.5]
+    neighbors: [19,3,8]
+
+  21:
+    loc: [2.25,3]
+    neighbors: [22,18]
+
+  22:
+    loc: [2.25,4]
+    neighbors: [35,23,21]
+
+  23:
+    loc: [0,4]
+    neighbors: [0,24,22]
+
+  24:
+    loc: [0,6]
+    neighbors: [25,29,23]
+
+  25:
+    loc: [0,7]
+    neighbors: [24,26,28]
+
+  26:
+    loc: [0,8]
+    neighbors: [25,27]
+
+  27:
+    loc: [1,8]
+    neighbors: [26,28,30]
+
+  28:
+    loc: [1,7]
+    neighbors: [25,27,31,29]
+
+  29:
+    loc: [1,6]
+    neighbors: [24,28,33]
+
+  30:
+    loc: [2,8]
+    neighbors: [27,12,31]
+
+  31:
+    loc: [2,7]
+    neighbors: [30,28,32]
+
+  32:
+    loc: [2,6]
+    neighbors: [31,33]
+
+  33:
+    loc: [1.75,6]
+    neighbors: [32,29,34]
+
+  34:
+    loc: [1.75,5.5]
+    neighbors: [33,35]
+
+  35:
+    loc: [2.25,5.5]
+    neighbors: [15,34,22]
+
+  36:
+    loc: [4.5,5]
+    neighbors: [10,16,17]
+
+
+"HighNodes": [19,20,13,14,15,35,18,21,22,8,10]
+
+"Water":
+  "Lakes":
+    0: 
+      loc: [.5,1.5]
+      rad: .5
+    1:
+      loc: [5.75,.75]
+      rad: .125
+    2:
+      loc: [4.125,4.125]
+      rad: 0.0625
+
+  "Rivers":
+    0:
+      start: [4.125,4.125]
+      end: [4.125,3.5]
+    1:
+      start: [4.125,3.5]
+      end: [2.325,3.5]
+    2:
+      start: [2.325,3.5]
+      end: [2.325,2.75]
+    3:
+      start: [2.325,2.75]
+      end: [.8,2.75]
+    4:
+      start: [.8,2.75]
+      end: [.8,1.5]
+
+
+"Forests":
+  0:
+    lowLeft: [3,0]
+    width: 5
+    height: 2
+
+  1:
+    lowLeft: [6,2]
+    width: 2
+    height: 2 
+

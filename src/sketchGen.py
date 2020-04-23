@@ -126,6 +126,90 @@ class Sketch:
             print("Most Likely Class: {}".format(near + " " + best_lab))
             print("")
 
+    def giveMostLikelyClass(self,point):
+        near = ""
+        near_test = np.zeros(shape=(self.sm_inf.size))
+        for i in range(0, len(near_test)):
+            near_test[i] = self.sm_inf.pointEvalND(i, point)
+        if(np.argmax(near_test) == 0):
+            near = 'Near'
+
+        # Check other classes
+        class_test = np.zeros(shape=(self.sm.size))
+        for i in range(0, len(class_test)):
+            class_test[i] = self.sm.pointEvalND(i, point)
+
+        best = np.argmax(class_test)
+        if(best == 0):
+            near = ""
+            best_lab = "Inside"
+        else:
+            te = self.con_label[best]
+            best_lab = max(te, key=te.get)
+        res = near + " " + best_lab; 
+        return res
+
+    def giveProbabilities(self,point):
+        class_test = np.zeros(shape=(self.sm.size))
+        for i in range(1, len(class_test)):
+            class_test[i] = self.sm.pointEvalND(i, point)
+
+        # print(class_test)
+
+        ans = {}
+        for l in self.labels:
+            ans[l] = 0
+            for i in range(1, len(class_test)):
+                te = self.con_label[i]
+                ans[l] += self.con_label[i][l]*class_test[i]
+        ans['Inside'] = self.sm.pointEvalND(0,point); 
+
+        suma = sum(ans.values())
+        for k in ans.keys():
+            ans[k] /= suma
+
+        return ans; 
+
+    def giveNearProb(self,point):
+        near_test = np.zeros(shape=(self.sm_inf.size))
+        for i in range(0, len(near_test)):
+            near_test[i] = self.sm_inf.pointEvalND(i, point)
+        return near_test; 
+
+
+    def answerQuestion(self,point,label,thresh = .8):
+        # res = self.giveMostLikelyClass(point)
+        # if(res == label):
+
+        ##################################################
+        #TODO: Integrate Camera Positions
+        ##################################################
+
+        probs = self.giveProbabilities(point); 
+        maxi = max(probs.values()); 
+        for k in probs.keys():
+            probs[k] /= maxi; 
+
+        if(label == "Near"):
+            nearProb = self.giveNearProb(point); 
+            if(np.argmax(nearProb) == 0):
+                return 'Yes'
+            else:
+                return 'No'
+        elif("Near" in label):
+            spl = label.split(); 
+            nearProb = self.giveNearProb(point); 
+            if(probs[spl[1]] > thresh and np.argmax(nearProb) == 0):
+                return 'Yes'
+            else:
+                return 'No'
+        elif(probs[label] > thresh):
+            
+            return 'Yes'; 
+        else: 
+            return 'No'; 
+
+
     def displayProbTables(self, show=True):
         plt.figure()
 
@@ -356,7 +440,7 @@ class Sketch:
 
 
 def fullPipeline():
-    np.random.seed(5)
+    #np.random.seed(5)
 
     soft = Softmax()
     points = generateSketch(verbosity=1)
@@ -387,14 +471,44 @@ def fullPipeline():
 
     plt.show()
 
+def testQuestions():
+    params = {'centroid': [500, 500], 'dist_nom': 50, 'dist_noise': .25,
+          'angle_noise': .3, 'pois_mean': 4, 'area_multiplier': 3, 'name': "Test", 'steepness': 15}
+    ske = Sketch(params,seed=3)
+    #ske.displayPoints();
+
+
+    allX = []; 
+    allY = []; 
+    allColors = []; 
+    label = 'North'
+
+    for i in range(0,40):
+        for j in range(0,40):
+            x = 300 + i*10; 
+            y = 300 + j*10; 
+            ans = ske.answerQuestion([x,y],label); 
+            #print(ans)
+            allX.append(x); 
+            allY.append(y); 
+            if(ans == 'Yes'):
+                allColors.append("green"); 
+            else:
+                allColors.append("red"); 
+    # ans = ske.answerQuestion([500,500],label); 
+    # print(ans); 
+    plt.scatter(allX,allY,color=allColors); 
+    plt.show();
 
 if __name__ == '__main__':
-    np.random.seed(3)
+    # np.random.seed(3)
 
-    params = {'centroid': [4, 5], 'dist_nom': 2, 'dist_noise': .25,
-              'angle_noise': .3, 'pois_mean': 2, 'area_multiplier': 3, 'name': "Test", 'steepness': 5}
-    ske = Sketch(params)
+    # params = {'centroid': [4, 5], 'dist_nom': 2, 'dist_noise': .25,
+    #           'angle_noise': .3, 'pois_mean': 2, 'area_multiplier': 3, 'name': "Test", 'steepness': 5}
+    # ske = Sketch(params)
 
-    # ske.displayPoints(show=False)
-    # ske.displayProbTables(show=False)
-    ske.displayClasses()
+    # # ske.displayPoints(show=False)
+    # # ske.displayProbTables(show=False)
+    # ske.displayClasses()
+
+    testQuestions(); 

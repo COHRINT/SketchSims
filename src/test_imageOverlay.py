@@ -5,11 +5,14 @@ import numpy as np
 import yaml
 from sketchGen import Sketch
 from collections import deque
+from PIL import Image
 
 
 def overlay():
     overhead = mpimg.imread("../img/overhead_mini_fit.png")
+
     underhead = mpimg.imread("../img/stichedFlyoverton.png")
+
     fig, ax = plt.subplots()
     imUnder = ax.imshow(underhead, alpha=1, zorder=0)
     imOver = ax.imshow(overhead, alpha=1, zorder=1)
@@ -85,18 +88,21 @@ def showPoints():
     bnext = Button(anext, 'Sketch')
     bnext.on_clicked(buttonUpdate)
 
-    ax.set_xlim([0, 700])
-    ax.set_ylim([700, 0])
+    ax.set_xlim([0, 1000])
+    ax.set_ylim([1000, 0])
 
     plt.show()
 
 
 def showSketches():
     overhead = mpimg.imread("../img/overhead_mini_fit.png")
+    overhead = np.flip(overhead, 0)
     underhead = mpimg.imread("../img/stichedFlyoverton.png")
+    underhead = np.flip(underhead, 0)
+
     fig, ax = plt.subplots()
-    imUnder = ax.imshow(underhead, alpha=1, zorder=0)
-    imOver = ax.imshow(overhead, alpha=1, zorder=1)
+    imUnder = ax.imshow(underhead, alpha=1, zorder=0, origin='lower left')
+    imOver = ax.imshow(overhead, alpha=1, zorder=1, origin='lower left')
     ax.set_axis_off()
 
     def sliderUpdate(idx):
@@ -134,7 +140,7 @@ def showSketches():
     #axSke = ax.scatter(-500, -500, alpha=1, zorder=2, color='red')
     newAx = fig.add_axes(ax.get_position(), frameon=False)
     newAx.set_axis_off()
-    axSke = newAx.contourf(np.zeros(shape=(700, 700)),
+    axSke = newAx.contourf(np.zeros(shape=(1000, 1000)),
                            cmap='Blues', zorder=2, alpha=0)
 
     # print(axSke.get_array())
@@ -147,13 +153,11 @@ def showSketches():
 
     def clearOut():
         newAx.clear()
-        #imUnder = ax.imshow(underhead, alpha=1, zorder=0)
-        #imOver = ax.imshow(overhead, alpha=1, zorder=1)
         newAx.set_axis_off()
-        # axslider = plt.axes([0.15, 0.01, 0.7, 0.03])
-        # plt.subplots_adjust(left=0.05, bottom=0.05, right=0.95, top=0.95)
-        # slider = Slider(axslider, "Alpha", 0, 1, valinit=1)
-        # slider.on_changed(sliderUpdate)
+
+    def buttonClear(event):
+        newAx.clear()
+        newAx.set_axis_off()
 
     def buttonUpdate(event):
         #print("Next Sketch")
@@ -161,10 +165,10 @@ def showSketches():
         sketchQueue.rotate(-1)
         # axSke.set_offsets(ske.points)
         [x, y, c] = ske.sm.plot2D(
-            low=[0, 0], high=[710, 710], vis=False, delta=10)
+            low=[0, 0], high=[1010, 1010], vis=False, delta=10)
 
         [x_inf, y_inf, c_inf] = ske.sm_inf.plot2D(
-            low=[0, 0], high=[710, 710], vis=False, delta=10)
+            low=[0, 0], high=[1010, 1010], vis=False, delta=10)
 
         c_inf = np.array(c_inf)
         c_inf[c_inf == 0] = 20
@@ -175,8 +179,8 @@ def showSketches():
         axSke = newAx.contourf(x, y, c,
                                cmap='Blues', zorder=2, alpha=0.5)
 
-        newAx.set_ylim([700, 0])
-        newAx.set_xlim([0, 700])
+        newAx.set_ylim([0, 1000])
+        newAx.set_xlim([0, 1000])
         newAx.set_aspect('equal')
 
         axText = newAx.text(0, 0, "", color='black', zorder=3)
@@ -196,13 +200,19 @@ def showSketches():
     bnext.on_clicked(buttonUpdate)
     sliderUpdate(0.5)
 
+    aclear = plt.axes([0.85, 0.04, 0.10, 0.03])
+    bclear = Button(aclear, "Clear")
+    bclear.on_clicked(buttonClear)
+
     cid = fig.canvas.mpl_connect(
         'button_press_event', lambda event: onclick_classes(event, sketchQueue[-1]))
 
-    ax.set_xlim([0, 700])
-    ax.set_ylim([700, 0])
-    newAx.set_ylim([700, 0])
-    newAx.set_xlim([0, 700])
+    ax.set_xlim([0, 1000])
+    ax.set_ylim([0, 1000])
+    ax.set_aspect("equal")
+    newAx.set_ylim([0, 1000])
+    newAx.set_xlim([0, 1000])
+    newAx.set_aspect("equal")
 
     plt.show()
 
@@ -211,8 +221,8 @@ def onclick_classes(event, ske):
     # print('%s click: button=%d, x=%d, y=%d, xdata=%f, ydata=%f' %
     #       ('double' if event.dblclick else 'single', event.button,
     #        event.x, event.y, event.xdata, event.ydata))
-    # print("Point Selected: [{:.2f},{:.2f}]".format(
-        # event.xdata, event.ydata))
+    print("Point Selected: [{:.2f},{:.2f}]".format(
+        event.xdata, event.ydata))
 
     point = [event.xdata, event.ydata]
     #point[1] = 700-point[1]
@@ -247,6 +257,7 @@ def onclick_classes(event, ske):
         # Check all softmax classes
 
         # Check if it's near
+        print("Centroid: {}".format(ske.centroid))
         near = ""
         near_test = np.zeros(shape=(ske.sm_inf.size))
         for i in range(0, len(near_test)):
@@ -267,10 +278,10 @@ def onclick_classes(event, ske):
             te = ske.con_label[best]
             best_lab = max(te, key=te.get)
 
-        if("North" in best_lab):
-            best_lab = best_lab.replace("North", "South")
-        elif("South" in best_lab):
-            best_lab = best_lab.replace("South", "North")
+        # if("North" in best_lab):
+        #     best_lab = best_lab.replace("North", "South")
+        # elif("South" in best_lab):
+        #     best_lab = best_lab.replace("South", "North")
 
         print("Most Likely Label: {}".format(near + " " + best_lab))
         print("")

@@ -1,0 +1,203 @@
+Deserts:
+  0:
+    height: 272
+    lowLeft: [462, 2]
+    width: 528
+  1:
+    height: 231
+    lowLeft: [697, 274]
+    width: 291
+Extent: [1000, 1000]
+Forests:
+  0:
+    height: 230
+    lowLeft: [191, 54]
+    width: 180
+HighNodes: [45, 44, 46, 47, 48, 35, 34, 33, 43, 42]
+Nodes:
+  0:
+    loc: [30, 485]
+    neighbors: [52, 45, 1]
+  1:
+    loc: [30, 676]
+    neighbors: [0, 2, 6]
+  2:
+    loc: [30, 753]
+    neighbors: [1, 3, 7]
+  3:
+    loc: [30, 828]
+    neighbors: [2, 8, 4]
+  4:
+    loc: [30, 904]
+    neighbors: [3, 5, 9]
+  5:
+    loc: [30, 980]
+    neighbors: [4, 10]
+  6:
+    loc: [105, 676]
+    neighbors: [1, 7, 11]
+  7:
+    loc: [105, 753]
+    neighbors: [2, 6, 8, 12]
+  8:
+    loc: [105, 828]
+    neighbors: [3, 7, 9, 13]
+  9:
+    loc: [105, 904]
+    neighbors: [4, 8, 10, 14]
+  10:
+    loc: [105, 980]
+    neighbors: [5, 9, 15]
+  11:
+    loc: [181, 676]
+    neighbors: [6, 12, 16]
+  12:
+    loc: [181, 753]
+    neighbors: [7, 11, 13, 17]
+  13:
+    loc: [181, 828]
+    neighbors: [8, 12, 14, 18]
+  14:
+    loc: [181, 904]
+    neighbors: [9, 13, 15, 19]
+  15:
+    loc: [181, 980]
+    neighbors: [10, 14, 20]
+  16:
+    loc: [256, 676]
+    neighbors: [11, 17, 21]
+  17:
+    loc: [256, 753]
+    neighbors: [12, 16, 18, 22]
+  18:
+    loc: [256, 828]
+    neighbors: [13, 17, 19, 23]
+  19:
+    loc: [256, 904]
+    neighbors: [14, 18, 20, 24]
+  20:
+    loc: [256, 980]
+    neighbors: [15, 19, 25]
+  21:
+    loc: [331, 676]
+    neighbors: [44, 16, 22]
+  22:
+    loc: [331, 753]
+    neighbors: [21, 17, 23]
+  23:
+    loc: [331, 828]
+    neighbors: [22, 18, 24]
+  24:
+    loc: [331, 904]
+    neighbors: [23, 19, 25]
+  25:
+    loc: [331, 980]
+    neighbors: [20, 24, 32]
+  26:
+    loc: [923, 40]
+    neighbors: [38, 27]
+  27:
+    loc: [923, 299]
+    neighbors: [26, 28, 30]
+  28:
+    loc: [811, 299]
+    neighbors: [27, 29]
+  29:
+    loc: [811, 188]
+    neighbors: [36, 28]
+  30:
+    loc: [923, 523]
+    neighbors: [27, 34, 31]
+  31:
+    loc: [923, 980]
+    neighbors: [30, 32]
+  32:
+    loc: [683, 980]
+    neighbors: [31, 33, 25]
+  33:
+    loc: [683, 748]
+    neighbors: [32, 43, 34]
+  34:
+    loc: [683, 523]
+    neighbors: [33, 39, 30, 35]
+  35:
+    loc: [683, 300]
+    neighbors: [34, 36, 48]
+  36:
+    loc: [683, 188]
+    neighbors: [29, 35, 37]
+  37:
+    loc: [570, 188]
+    neighbors: [36, 38]
+  38:
+    loc: [570, 40]
+    neighbors: [26, 37, 49]
+  39:
+    loc: [550, 523]
+    neighbors: [34, 40, 41]
+  40:
+    loc: [550, 412]
+    neighbors: [39, 47]
+  41:
+    loc: [445, 523]
+    neighbors: [39, 42]
+  42:
+    loc: [445, 635]
+    neighbors: [41, 44, 43]
+  43:
+    loc: [445, 748]
+    neighbors: [33, 42]
+  44:
+    loc: [331, 635]
+    neighbors: [42, 21, 45]
+  45:
+    loc: [331, 485]
+    neighbors: [44, 46, 0]
+  46:
+    loc: [331, 412]
+    neighbors: [45, 47]
+  47:
+    loc: [366, 412]
+    neighbors: [46, 48, 40]
+  48:
+    loc: [366, 300]
+    neighbors: [35, 47, 49, 51]
+  49:
+    loc: [366, 40]
+    neighbors: [38, 48, 50]
+  50:
+    loc: [175, 40]
+    neighbors: [49, 51]
+  51:
+    loc: [175, 300]
+    neighbors: [50, 52, 48]
+  52:
+    loc: [30, 300]
+    neighbors: [0, 51]
+Water:
+  Lakes:
+    0:
+      loc: [612, 74]
+      rad: 22
+    1:
+      loc: [86, 168]
+      rad: 55
+    2:
+      loc: [143, 863]
+      rad: 22
+    3:
+      loc: [494, 469]
+      rad: 40
+  Rivers:
+    0:
+      end: [354, 435]
+      start: [494, 435]
+    1:
+      end: [354, 331]
+      start: [354, 435]
+    2:
+      end: [135, 331]
+      start: [354, 331]
+    3:
+      end: [135, 177]
+      start: [135, 331]
