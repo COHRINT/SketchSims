@@ -35,12 +35,18 @@ class POMCP:
         self.human_class_thresh = mod.human_class_thresh;
         self.maxDepth = mod.maxDepth 
         self.human_accuracy = mod.human_accuracy; 
+        self.capture_length = mod.capture_length; 
+        self.detect_length = mod.detect_length; 
 
         self.buildActionSet(); 
 
     def buildActionSet(self):
         self.actionSet = []; 
-        for i in range(0,4):
+
+
+        # For conjoined action spaces
+        # ------------------------------------------------------
+        for i in range(0,8):
             self.actionSet.append([i,[None,None]]); 
 
             for ske in self.sketchSet:
@@ -51,6 +57,20 @@ class POMCP:
                 for lab in ske.labels:
                     self.actionSet.append([i,[ske,lab]]); 
                     self.actionSet.append([i,[ske,"Near " + lab]]); 
+
+        # For separated action spaces
+        # ------------------------------------------------------
+        # for i in range(0,4):
+        #     self.actionSet.append([i,[None,None]]); 
+
+        # for ske in self.sketchSet:
+        #     #inside
+        #     self.actionSet.append([None,[ske,'Inside']])
+        #     #near
+        #     self.actionSet.append([None,[ske,'Near']])
+        #     for lab in ske.labels:
+        #         self.actionSet.append([None,[ske,lab]]); 
+        #         self.actionSet.append([None,[ske,"Near " + lab]]); 
 
 
 
@@ -142,7 +162,7 @@ class POMCP:
             info['Execution Time'] = time.clock()-startTime
             info['Tree Queries'] = count
             #info['Tree Size'] = len(h.traverse());
-            print([a.Q for a in h])
+            #print([a.Q for a in h])
             return np.argmax([a.Q for a in h]), info
             #print([a.Q for a in h])
         else:
@@ -229,18 +249,22 @@ class POMCP:
                     
 
 
-        theta_options = [180,0,90,270,0]
-        theta = theta_options[act[0]]; 
+
+        if(act[0] is not None):
+            theta_options = [180,0,90,270,135,45,315,225]
+            theta = theta_options[act[0]]; 
+        else:
+            theta = 90;
 
         for i in range(0,len(sSet)):
             s = sSet[i]; 
-            detect_length = 75
+            detect_length = self.detect_length
             detect_points = [[s[0], s[1]], [s[0]+detect_length*math.cos(2*-0.261799+math.radians(theta)), s[1]+detect_length*math.sin(2*-0.261799+math.radians(
                 theta))], [s[0]+detect_length*math.cos(2*0.261799+math.radians(theta)), s[1]+detect_length*math.sin(2*0.261799+math.radians(theta))]]
             detect_poly = Polygon(detect_points); 
 
 
-            capture_length = 25
+            capture_length = self.capture_length
             capture_points = [[s[0], s[1]], [s[0]+capture_length*math.cos(2*-0.261799+math.radians(theta)), s[1]+capture_length*math.sin(2*-0.261799+math.radians(
                 theta))], [s[0]+capture_length*math.cos(2*0.261799+math.radians(theta)), s[1]+capture_length*math.sin(2*0.261799+math.radians(theta))]]
             capture_poly = Polygon(capture_points); 
@@ -270,6 +294,7 @@ class POMCP:
 
         weights = np.multiply(human_weights,drone_weights); 
         #weights = human_weights
+        #weights = drone_weights
 
         weights /= np.sum(weights)
 
@@ -356,7 +381,8 @@ def testBeliefUpdate():
     pickInd = np.random.randint(0, len(target))
     # trueS = [np.random.random()*1000, np.random.random()*1000, target[pickInd]
     #          [0], target[pickInd][1], curs[pickInd], goals[pickInd], 0]
-    trueS = [35, 815, target[pickInd][0], target[pickInd][1], curs[pickInd], goals[pickInd], 0];
+    #trueS = [35, 815, target[pickInd][0], target[pickInd][1], curs[pickInd], goals[pickInd], 0];
+    trueS = [500, 500, target[pickInd][0], target[pickInd][1], curs[pickInd], goals[pickInd], 0];
     print(trueS[2:4]); 
 
 
@@ -369,8 +395,8 @@ def testBeliefUpdate():
     #act,info = solver.search(sSet, h, depth=solver.maxDepth, inform=True)
 
     #print(info)
-    act =  47
-    act = 43
+    act = 10
+    act = 12
     print(solver.actionSet[act])
 
     sSet = solver.dynamicsUpdate(sSet,solver.actionSet[act]); 
