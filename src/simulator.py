@@ -26,9 +26,10 @@ def simulate(verbosity = 0):
     network = readInNetwork('../yaml/flyovertonShift.yaml')
     h = Node()
     solver = POMCP('graphSpec')
-    
+
     maxFlightTime = 300 #6 minutes
-    human_sketch_chance = 1/60; #about once a minute
+    #human_sketch_chance = 1/60; #about once a minute
+    human_sketch_chance = 0; 
 
     # Initialize belief and state
     # ------------------------------------------------------
@@ -309,11 +310,9 @@ def runSims(numRuns,tag):
     run = 0; 
     while(run < numRuns):
         print('Simulation: {} of {}'.format(run+1,numRuns)); 
-        try:
-            dataRun = simulate(verbosity=0); 
-        except:
-            print("Simulator Error, retrying sim")
-            continue; 
+
+        dataRun = simulate(verbosity=0); 
+
         run += 1; 
         dataPackage['sims'].append(dataRun);
         print("Time to Capture: {}s".format(dataPackage['sims'][-1]['TotalTime']))
