@@ -1,6 +1,6 @@
 import importlib
 from treeNode import Node
-from roadNode import RoadNode, readInNetwork, populatePoints, specifyPoint
+from roadNode import RoadNode, readInNetwork, populatePoints, specifyPoint, dist
 import sys
 import numpy as np
 import time
@@ -19,6 +19,11 @@ class POMCP:
         self.generate_s = mod.generate_s
         self.generate_o = mod.generate_o
         self.generate_r = mod.generate_r
+
+        self.generate_s_time = mod.generate_s_time
+        self.generate_o_time = mod.generate_o_time
+        self.generate_r_time = mod.generate_r_time
+
         self.rollout = mod.rollout
         self.estimate_value = mod.estimate_value
         self.isTerminal = mod.isTerminal
@@ -38,25 +43,77 @@ class POMCP:
         self.capture_length = mod.capture_length; 
         self.detect_length = mod.detect_length; 
 
-        self.buildActionSet(); 
+        #self.buildActionSet(); 
 
-    def buildActionSet(self):
-        self.actionSet = []; 
+
+    def getActionSet(self,s):
+        actionSet = []; 
+
+        nodeSet = []; 
+
+
+        for n in s.neighbors:
+            if(n not in nodeSet):
+                nodeSet.append(n); 
+            for n2 in n.neighbors:
+                if(n2 not in nodeSet and n2 is not s):
+                    if(s.loc[0] == n.loc[0] and n.loc[0] == n2.loc[0]):
+                        continue; 
+                    elif(s.loc[1] == n.loc[1] and n.loc[1] == n2.loc[1]):
+                        continue; 
+                    nodeSet.append(n2);
 
 
         # For conjoined action spaces
         # ------------------------------------------------------
-        for i in range(0,8):
-            self.actionSet.append([i,[None,None]]); 
+        for i in range(0,len(nodeSet)):
+            actionSet.append([nodeSet[i],[None,None]]); 
 
             for ske in self.sketchSet:
                 #inside
-                self.actionSet.append([i,[ske,'Inside']])
+                actionSet.append([nodeSet[i],[ske,'Inside']])
                 #near
-                self.actionSet.append([i,[ske,'Near']])
+                #actionSet.append([nodeSet[i],[ske,'Near']])
                 for lab in ske.labels:
-                    self.actionSet.append([i,[ske,lab]]); 
-                    self.actionSet.append([i,[ske,"Near " + lab]]); 
+                    actionSet.append([nodeSet[i],[ske,lab]]); 
+                    #actionSet.append([nodeSet[i],[ske,"Near " + lab]]); 
+
+        return actionSet; 
+
+
+    def buildActionSet(self,s):
+        self.actionSet = []; 
+
+        nodeSet = []; 
+
+
+        for n in s.neighbors:
+            if(n not in nodeSet):
+                nodeSet.append(n); 
+            for n2 in n.neighbors:
+                if(n2 not in nodeSet and n2 is not s):
+                    if(s.loc[0] == n.loc[0] and n.loc[0] == n2.loc[0]):
+                        continue; 
+                    elif(s.loc[1] == n.loc[1] and n.loc[1] == n2.loc[1]):
+                        continue; 
+                    nodeSet.append(n2);
+
+
+
+
+        # For conjoined action spaces
+        # ------------------------------------------------------
+        for i in range(0,len(nodeSet)):
+            self.actionSet.append([nodeSet[i],[None,None]]); 
+
+            for ske in self.sketchSet:
+                #inside
+                self.actionSet.append([nodeSet[i],[ske,'Inside']])
+                #near
+                #self.actionSet.append([nodeSet[i],[ske,'Near']])
+                for lab in ske.labels:
+                    self.actionSet.append([nodeSet[i],[ske,lab]]); 
+                    #self.actionSet.append([nodeSet[i],[ske,"Near " + lab]]); 
 
         # For separated action spaces
         # ------------------------------------------------------
@@ -74,10 +131,10 @@ class POMCP:
 
 
 
-    def addSketch(self,ske):
+    def addSketch(self,s,ske):
         #print("Sketch Added");
         self.sketchSet.append(ske); 
-        self.buildActionSet(); 
+        self.buildActionSet(s); 
 
 
     def simulate(self, s, h, depth):
@@ -88,20 +145,26 @@ class POMCP:
             return 0
 
         h.data.append(s)
-
+        actionSet = self.getActionSet(s[7]); 
+        #print(h.getChildrenIDs()); 
         if(not h.hasChildren()):
-            for a in range(0,len(self.actionSet)):
+            #for a in range(0,len(self.actionSet)):
                 # self.addActionNode(h,a);
+            #actionSet = self.getActionSet(s[7])
+            for a in range(0,len(actionSet)):
                 h.addChildID(a)
+        #print(actionSet);
 
         # find best action acccording to c
         act = np.argmax([ha.Q + self.c*np.sqrt(np.log(h.N)/ha.N) for ha in h])
 
         # generate s,o,r
-        sprime = self.generate_s(s,self.actionSet[act])
-        #print("You're currently sending a number, but you need the sketch and the direction as well")
-        o = self.generate_o(sprime, self.actionSet[act])
-        r = self.generate_r(s, self.actionSet[act])
+        # sprime = self.generate_s(s,actionSet[act])
+        # o = self.generate_o(sprime, actionSet[act])
+        # r = self.generate_r(s, actionSet[act])
+        sprime = self.generate_s_time(s,actionSet[act],dist(s,actionSet[act][0].loc)/self.agentSpeed)
+        o = self.generate_o_time(sprime, actionSet[act])
+        r = self.generate_r_time(s, actionSet[act])
 
         # if o not in ha.children
         # add it and estimate value
@@ -111,7 +174,7 @@ class POMCP:
             return self.estimate_value(s, h[act])
             #return self.rollout(s,depth);
 
-        if(self.isTerminal(s, self.actionSet[act])):
+        if(self.isTerminal(s, actionSet[act])):
             return r
 
         q = r + self.gamma * \
@@ -141,7 +204,7 @@ class POMCP:
             sSet.append(tmp)
         return sSet
 
-    def search(self, b, h, depth, inform=False):
+    def search(self, b, h, depth, maxTime, inform=False):
         # Note: You can do more proper analytical updates if you sample during runtime
         # but it's much faster if you pay the sampling price beforehand.
         # TLDR: You need to change this before actually using
@@ -153,7 +216,7 @@ class POMCP:
 
         startTime = time.clock()
 
-        while(time.clock()-startTime < self.maxTime and count < self.maxTreeQueries): 
+        while(time.clock()-startTime < maxTime and count < min(self.maxTreeQueries,len(sSet))): 
             s = sSet[count]
             count += 1
             self.simulate(s, h, depth)
@@ -178,6 +241,64 @@ class POMCP:
         s = np.array(sSetPrime)
 
         return s
+
+    def measurementUpdate_time(self,sSet,act,o):
+
+        weights = np.zeros(shape=(len(sSet))); 
+        [drone_o,human_o] = o.split();
+
+        for i in range(0,len(sSet)):
+            s = sSet[i]; 
+            theta = computeTheta([s[0],s[1]],act[0].loc);
+            #make a rectangle representing the total distance swept
+            capture_points = []; 
+            capture_length = self.capture_length; 
+            capture_points.append([s[0]+capture_length*np.cos(theta-90)/2, s[1]+capture_length*np.sin(theta-90)/2]); 
+            capture_points.append([s[0]+capture_length*np.cos(theta+90)/2, s[1]+capture_length*np.sin(theta+90)/2]);
+            capture_points.append([act[0].loc[0]+capture_length*np.cos(theta-90)/2, act[0].loc[1]+capture_length*np.sin(theta-90)/2])
+            capture_points.append([act[0].loc[0]+capture_length*np.cos(theta+90)/2, act[0].loc[1]+capture_length*np.sin(theta+90)/2])
+
+            detect_points = []; 
+            detect_length = self.detect_length; 
+            detect_points.append([s[0]+detect_length*np.cos(theta-90)/2, s[1]+detect_length*np.sin(theta-90)/2]); 
+            detect_points.append([s[0]+detect_length*np.cos(theta+90)/2, s[1]+detect_length*np.sin(theta+90)/2]);
+            detect_points.append([act[0].loc[0]+detect_length*np.cos(theta-90)/2, act[0].loc[1]+detect_length*np.sin(theta-90)/2])
+            detect_points.append([act[0].loc[0]+detect_length*np.cos(theta+90)/2, act[0].loc[1]+detect_length*np.sin(theta+90)/2])
+            detect_poly  = Polygon(detect_points); 
+
+
+            capture_poly = Polygon(capture_points);
+            target = Point(s[2],s[3]); 
+
+            if(detect_poly.contains(target) and drone_o == 'Detect'):
+                weights[i] = .97; 
+            elif(drone_o == 'Detect'):
+                weights[i] = 0.03
+
+            if(capture_poly.contains(target) and drone_o == 'Captured'):
+                    weights[i] = .99; 
+            elif(drone_o == 'Captured'):
+                weights[i] = 0.01; 
+
+            if(weights[i] == 0 and drone_o == 'Null'):
+                weights[i] = .95; 
+            else:
+                weights[i] = 0.05; 
+
+        weights /= np.sum(weights)
+
+        csum = np.cumsum(weights)
+        csum[-1] = 1
+
+        indexes = np.searchsorted(csum, np.random.random(len(sSet)))
+        sSet[:] = sSet[indexes]
+
+        # print(s)
+
+        return sSet
+
+
+
 
     def measurementUpdate(self, sSet, act, o):
 
@@ -205,6 +326,8 @@ class POMCP:
         #         else:
         #             weights[i] = downWeight
         #print("Fix the near weighting")
+        #acc = 0.97;
+        acc = self.human_accuracy 
         [drone_o,human_o] = o.split(); 
         if(act[1][0] is not None and human_o is not 'Null'):
             ske = act[1][0]; 
@@ -220,44 +343,40 @@ class POMCP:
                     nearProb = ske.giveNearProb(point); 
                     #nearProb /= max(nearProb); 
                     if(np.argmax(nearProb) == 0):
-                        human_weights[i] = self.human_accuracy;
+                        human_weights[i] = acc;
                     else:
-                        human_weights[i] = 1-self.human_accuracy;
+                        human_weights[i] = 1-acc;
                     #print(nearProb[0])
                 elif("Near" in label):
                     spl = label.split(); 
                     nearProb = ske.giveNearProb(point); 
                     #human_weights[i] = probs[spl[1]]*nearProb[0]; 
                     if(probs[spl[1]] > self.human_class_thresh):
-                        human_weights[i] = self.human_accuracy; 
+                        human_weights[i] = acc; 
                     else:
-                        human_weights[i] = (1-self.human_accuracy);
+                        human_weights[i] = (1-acc);
                     if(np.argmax(nearProb) == 0):
-                        human_weights[i] *= self.human_accuracy; 
+                        human_weights[i] *= acc; 
                     else:
-                        human_weights[i] *= (1-self.human_accuracy);  
+                        human_weights[i] *= (1-acc);  
                 else:
                     if(probs[label] > self.human_class_thresh):
-                        human_weights[i] = self.human_accuracy;
+                        human_weights[i] = acc;
                         #human_weights[i] = .95;
                     else:
-                        human_weights[i] = 1-self.human_accuracy;
+                        human_weights[i] = 1-acc;
                         #human_weights[i] = .05; 
                     #human_weights[i] = probs[label]; 
                 if(human_o == 'No'):
-                    human_weights[i] = 1-human_weights[i];  
+                    human_weights[i] = 1-human_weights[i]; 
+
+
                     
-
-
-
-        if(act[0] is not None):
-            theta_options = [180,0,90,270,135,45,315,225]
-            theta = theta_options[act[0]]; 
-        else:
-            theta = 90;
 
         for i in range(0,len(sSet)):
             s = sSet[i]; 
+            #theta = np.arctan2(act[0].loc[1],act[0].loc[0])-np.arctan2(s[1],s[0])
+            theta = computeTheta([s[0],s[1]],act[0].loc); 
             detect_length = self.detect_length
             detect_points = [[s[0], s[1]], [s[0]+detect_length*math.cos(2*-0.261799+math.radians(theta)), s[1]+detect_length*math.sin(2*-0.261799+math.radians(
                 theta))], [s[0]+detect_length*math.cos(2*0.261799+math.radians(theta)), s[1]+detect_length*math.sin(2*0.261799+math.radians(theta))]]
@@ -291,8 +410,10 @@ class POMCP:
                     drone_weights[i] = self.drone_falseNeg; 
 
 
-
-        weights = np.multiply(human_weights,drone_weights); 
+        if(human_o == "Null" or human_o == None):
+            weights = drone_weights; 
+        else:
+            weights = np.multiply(human_weights,drone_weights); 
         #weights = human_weights
         #weights = drone_weights
 
@@ -308,10 +429,17 @@ class POMCP:
 
         return sSet
 
+def computeTheta(a,b):
+    #a is agent, b is goal
+    vec = [b[0]-a[0],b[1]-a[1]]; 
+    theta = np.arctan2(vec[1],vec[0])
+    theta = np.degrees(theta); 
+    return theta
+
 
 def testPOMCP():
     h = Node()
-    solver = POMCP('gridSpec')
+    solver = POMCP('graphSpec')
 
     params = {'centroid': [500, 500], 'dist_nom': 50, 'dist_noise': .25,
       'angle_noise': .3, 'pois_mean': 4, 'area_multiplier': 5, 'name': "Test", 'steepness': 20}
@@ -362,14 +490,14 @@ def testPOMCP():
 
 def testBeliefUpdate():
     h = Node()
-    solver = POMCP('gridSpec')
+    solver = POMCP('graphSpec')
 
     params = {'centroid': [500, 500], 'dist_nom': 50, 'dist_noise': .25,
       'angle_noise': .3, 'pois_mean': 4, 'area_multiplier': 5, 'name': "Test", 'steepness': 20}
-    ske = Sketch(params, seed=0)
-    np.random.seed(1);
+    #ske = Sketch(params, seed=0)
+    #np.random.seed(2);
 
-    solver.addSketch(ske);
+    #solver.addSketch(ske);
 
 
     network = readInNetwork('../yaml/flyovertonShift.yaml')
@@ -382,25 +510,33 @@ def testBeliefUpdate():
     # trueS = [np.random.random()*1000, np.random.random()*1000, target[pickInd]
     #          [0], target[pickInd][1], curs[pickInd], goals[pickInd], 0]
     #trueS = [35, 815, target[pickInd][0], target[pickInd][1], curs[pickInd], goals[pickInd], 0];
-    trueS = [500, 500, target[pickInd][0], target[pickInd][1], curs[pickInd], goals[pickInd], 0];
+    
+    trueNode = np.random.choice(network); 
+    #trueNode = network[29]; 
+    solver.buildActionSet(trueNode)
+
+    trueS = [trueNode.loc[0], trueNode.loc[1], target[pickInd][0], target[pickInd][1], curs[pickInd], goals[pickInd], 0, trueNode];
     print(trueS[2:4]); 
 
 
 
     sSet = []
     for i in range(0, len(target)):
-        sSet.append([trueS[0], trueS[1], target[i][0],target[i][1], curs[i], goals[i], 0])
+        sSet.append([trueS[0], trueS[1], target[i][0],target[i][1], curs[i], goals[i], 0, trueS[7]])
 
 
     #act,info = solver.search(sSet, h, depth=solver.maxDepth, inform=True)
 
     #print(info)
-    act = 10
-    act = 12
+    act = 2
+    #act = 12
     print(solver.actionSet[act])
 
     sSet = solver.dynamicsUpdate(sSet,solver.actionSet[act]); 
+    print(trueS[0:2]); 
     trueS = solver.generate_s(trueS,solver.actionSet[act]); 
+    print(trueS[0:2]); 
+    print(solver.actionSet[act][0].loc); 
     o = solver.generate_o(trueS,solver.actionSet[act]);
     print(o); 
     #o = 'Captured No'
@@ -426,8 +562,8 @@ def testBeliefUpdate():
 
 if __name__ == '__main__':
 
-    print("When last you were here: You were investigating reward functions and estimation of value"); 
-    print("But you really should build the measurement update..."); 
+    #print("When last you were here: You were investigating reward functions and estimation of value"); 
+    #print("But you really should build the measurement update..."); 
 
     #testPOMCP(); 
     testBeliefUpdate(); 
