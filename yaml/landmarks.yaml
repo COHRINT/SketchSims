@@ -18,3 +18,27 @@
   "GrayHouse1": 
     loc: [290,735]
     radius: 10
+
+  "Big Pond":
+    loc: [85,165]
+    radius: 55
+
+  "Trees1":
+    loc: [140,785]
+    radius: 35
+
+  "Trees2":
+    loc: [65, 712]
+    radius: 35
+
+  "FarmHouse1":
+    loc: [275,270]
+    radius: 30
+
+  "Dirt":
+    loc: [800,870]
+    radius: 100
+
+  "Dune":
+    loc: [855, 365]
+    radius: 60
