@@ -34,14 +34,21 @@ class POMCP:
         self.gamma = mod.gamma
         self.maxTime = mod.maxTime
         self.agentSpeed = mod.agentSpeed
+        self.agentDev = mod.agentDev
         self.sketchSet = []; 
         self.drone_falseNeg = mod.drone_falseNeg
         self.drone_falsePos = mod.drone_falsePos
         self.human_class_thresh = mod.human_class_thresh;
         self.maxDepth = mod.maxDepth 
+        self.human_availability = mod.human_availability
         self.human_accuracy = mod.human_accuracy; 
         self.capture_length = mod.capture_length; 
         self.detect_length = mod.detect_length; 
+        self.targetSpeed = mod.targetSpeed
+        self.targetDev = mod.targetDev
+        self.offRoadSpeed = mod.offRoadSpeed
+        self.offRoadDev = mod.offRoadDev
+        self.leaveRoadChance = mod.leaveRoadChance
 
         #self.buildActionSet(); 
 
@@ -73,7 +80,7 @@ class POMCP:
                 #inside
                 actionSet.append([nodeSet[i],[ske,'Inside']])
                 #near
-                #actionSet.append([nodeSet[i],[ske,'Near']])
+                actionSet.append([nodeSet[i],[ske,'Near']])
                 for lab in ske.labels:
                     actionSet.append([nodeSet[i],[ske,lab]]); 
                     #actionSet.append([nodeSet[i],[ske,"Near " + lab]]); 
@@ -110,7 +117,7 @@ class POMCP:
                 #inside
                 self.actionSet.append([nodeSet[i],[ske,'Inside']])
                 #near
-                #self.actionSet.append([nodeSet[i],[ske,'Near']])
+                self.actionSet.append([nodeSet[i],[ske,'Near']])
                 for lab in ske.labels:
                     self.actionSet.append([nodeSet[i],[ske,lab]]); 
                     #self.actionSet.append([nodeSet[i],[ske,"Near " + lab]]); 

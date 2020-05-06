@@ -11,7 +11,6 @@ from shapely.geometry import Polygon, Point
 import yaml
 
 
-
 def computeTheta(a,b):
     #a is agent, b is goal
     vec = [b[0]-a[0],b[1]-a[1]]; 
@@ -27,7 +26,7 @@ def simulate(verbosity = 0):
     network = readInNetwork('../yaml/flyovertonShift.yaml')
     h = Node()
     solver = POMCP('graphSpec')
-    #maxSteps = 300
+    
     maxFlightTime = 300 #6 minutes
     human_sketch_chance = 1/60; #about once a minute
 
@@ -36,13 +35,9 @@ def simulate(verbosity = 0):
     target, curs, goals = populatePoints(network, solver.sampleCount)
     pickInd = np.random.randint(0, len(target))
     trueNode = np.random.choice(network); 
-    #trueNode = network[29]; 
     solver.buildActionSet(trueNode)
 
     trueS = [trueNode.loc[0], trueNode.loc[1], target[pickInd][0], target[pickInd][1], curs[pickInd], goals[pickInd], 0, trueNode];
-    #print(trueS[2:4]); 
-
-
 
     sSet = []
     for i in range(0, len(target)):
@@ -58,15 +53,14 @@ def simulate(verbosity = 0):
     # ske = Sketch(params)
     # solver.addSketch(trueS[7],ske);
 
+
     # Set up sketches
     # ------------------------------------------------------
-
-
     with open("../yaml/landmarks.yaml", 'r') as stream:
         fi = yaml.safe_load(stream)
 
     params = {'centroid': [4, 5], 'dist_nom': 2, 'dist_noise': .25,
-              'angle_noise': .3, 'pois_mean': 4, 'area_multiplier': 3, 'name': "Test", 'steepness': 7}
+              'angle_noise': .3, 'pois_mean': 4, 'area_multiplier': 4, 'name': "Test", 'steepness': 7}
     allSketches = []
     #seedCount = 0
     for k, v in fi['Landmarks'].items():
@@ -82,26 +76,61 @@ def simulate(verbosity = 0):
     sketchQueue = deque(allSketches)
 
 
+    # Set up data collection
+    # ----------------------------------------------------------
+    # Note: Beliefs should only be s[2:4] 
+    # to capture target state beliefs and s[6] to capture mode 
+    data = {'States':[],'Actions':[],'Human_Obs':[],'Drone_Obs':[],'Beliefs':[],'ModeBels':[],'TotalTime':0,'DecisionTimes':[],'GivenTimes':[],'Sketches':[]};
+    data['maxDepth'] = solver.maxDepth; 
+    data['c'] = solver.c; 
+    data['maxTreeQueries'] = solver.maxTreeQueries; 
+    data['maxTime'] = solver.maxTime; 
+    data['gamma'] = solver.gamma; 
+    data['agentSpeed'] = solver.agentSpeed; 
+    data['sampleCount'] = solver.sampleCount; 
+    data['human_class_thresh'] = solver.human_class_thresh
+    data['human_accuracy'] = solver.human_accuracy; 
+    data['capture_length'] = solver.capture_length
+    data['detect_length'] = solver.detect_length; 
+    data['drone_falseNeg'] = solver.drone_falseNeg; 
+    data['drone_falsePos'] = solver.drone_falsePos; 
+    data['targetSpeed'] = solver.targetSpeed; 
+    data['targetDev'] = solver.targetDev; 
+    data['offRoadSpeed'] = solver.offRoadSpeed; 
+    data['offRoadDev']= solver.offRoadDev; 
+    data['leaveRoadChance'] = solver.leaveRoadChance; 
+    data['human_availability'] = solver.human_availability
+    data['maxFlightTime'] = maxFlightTime; 
+    data['human_sketch_chance'] = human_sketch_chance; 
+
+    #print(data['maxTime']); 
 
 
     endFlag = False; 
     totalTime = 0; 
     step = 0; 
-    curDecTime = 1; 
+    curDecTime = 5; 
+    decCounts = 0; 
     # Simulate until captured or out of time
     # ------------------------------------------------------
     #for step in range(0, maxSteps):
     newSet = sSet; 
     while(totalTime < maxFlightTime):
-        
+        data['States'].append(trueS); 
+        bel = np.array(sSet)[:,2:4]; 
+        modebel = np.array(sSet)[:,7]; 
+
+        data['Beliefs'].append(bel); 
+        data['ModeBels'].append(modebel)
 
         # POMCP makes decision
         decisionFlag = False; 
         # -----------------------------------------------------
+
         if(trueS[0] == trueS[7].loc[0] and trueS[1] == trueS[7].loc[1]):
             if(verbosity > 0):
                 print("Starting step: {} with Decision Time: {:0.2f}s at Total Time: {:0.2f}s".format(step+1, min(solver.maxTime,curDecTime),totalTime))
-
+            decCounts = 0; 
             decisionFlag = True;
             #act,info = solver.search(sSet, h, depth=min(solver.maxDepth, maxSteps-step+1), maxTime = min(curDecTime,solver.maxTime),inform=True)
             act,info = solver.search(newSet, h, depth=solver.maxDepth, maxTime = min(curDecTime,solver.maxTime),inform=True)
@@ -110,12 +139,15 @@ def simulate(verbosity = 0):
             solver.buildActionSet(trueS[7]);
             if(verbosity > 1):
                 print("Action: {}".format(solver.actionSet[act]));
+            data['Actions'].append(solver.actionSet[act]); 
 
             if(solver.actionSet[act][1][0] is not None):
                 o = solver.generate_o(trueS,solver.actionSet[act]);
                 if(verbosity > 1):
                     [o1,o2] = o.split(); 
                     print("Human observation: {}".format(o2)); 
+                [o1,o2] = o.split(); 
+                data['Human_Obs'].append(o2); 
                 newSet = np.array(newSet);
                 newSet = solver.measurementUpdate(newSet,solver.actionSet[act],o); 
                 newSet = solver.measurementUpdate_time(newSet,solver.actionSet[act],o); 
@@ -128,10 +160,17 @@ def simulate(verbosity = 0):
 
             curDecTime = dist(trueS,solver.actionSet[act][0].loc)/solver.agentSpeed; 
             totalTime += curDecTime; 
+
+            data['GivenTimes'].append(min(curDecTime,solver.maxTime)); 
+            data['DecisionTimes'].append(totalTime); 
             step += 1; 
             for i in range(0,int(np.ceil(curDecTime))):
                 newSet = solver.dynamicsUpdate(newSet,solver.actionSet[act]);
 
+        decCounts += 1; 
+        if(decCounts + totalTime > maxFlightTime):
+            totalTime += decCounts; 
+            endFlag = True
         fakeAct = [solver.actionSet[act][0],[None,None]]; 
 
         #if(verbosity > 1):
@@ -148,23 +187,15 @@ def simulate(verbosity = 0):
         o = solver.generate_o(trueS,fakeAct); 
         #o = solver.generate_o(trueS,[solver.actionSet[act][0],[solver.actionSet[act][1][0],None]]); 
         #o = "Null No"
-        [o1,o2] = o.split(); 
+        [o1,o2] = o.split();
+        data['Drone_Obs'].append(o1);  
         o = o1 + " Null"; 
         if("Captured" in o):
             endFlag = True; 
+
         if(verbosity > 1):
             print("Drone Observation: {}".format(o1)); 
 
-        # if(verbosity == 2):
-        #     ax.clear(); 
-        #     sSetNp = np.array(sSet); 
-        #     sSetOff = sSetNp[sSetNp[:,6] == 1]; 
-        #     sSetOn = sSetNp[sSetNp[:,6] == 0]; 
-        #     ax.scatter(sSetOn[:,2],sSetOn[:,3], color = 'blue', alpha=0.9, edgecolor='none'); 
-        #     ax.scatter(sSetOff[:,2],sSetOff[:,3], color = 'red', alpha = 0.9, edgecolor='none'); 
-        #     ax.set_xlim([0,1000]); 
-        #     ax.set_ylim([0,1000]); 
-        #     plt.pause(0.1); 
 
 
         # if question was asked, see if human answered
@@ -242,7 +273,9 @@ def simulate(verbosity = 0):
             solver.addSketch(trueS[7],ske);
             if(verbosity > 1):
                 print("Sketch Made: {}".format(ske.name)); 
-
+            data['Sketches'].append(ske); 
+        else:
+            data['Sketches'].append(None); 
 
 
         # save everything
@@ -260,19 +293,43 @@ def simulate(verbosity = 0):
         if(endFlag):
             break; 
 
+    data['TotalTime'] = totalTime;
+
+    return data; 
 
 def runSims(numRuns,tag):
 
     #Dictionary with sims and meta data
     #Sims is list of dictionaries, 1 per run
-    
+
+    print("Beginning Data Collection: {}".format(tag)); 
 
     dataPackage = {'sims':[],'numRuns':numRuns,'tag':tag}
+    #for i in range(0,numRuns):
+    run = 0; 
+    while(run < numRuns):
+        print('Simulation: {} of {}'.format(run+1,numRuns)); 
+        try:
+            dataRun = simulate(verbosity=0); 
+        except:
+            print("Simulator Error, retrying sim")
+            continue; 
+        run += 1; 
+        dataPackage['sims'].append(dataRun);
+        print("Time to Capture: {}s".format(dataPackage['sims'][-1]['TotalTime']))
+        print(""); 
 
+        np.save('../data/simHARPS_{}'.format(tag),dataPackage); 
+    print("Simulation Set Complete, Data Saved"); 
 
 if __name__ == '__main__':
 
 
-    simulate(verbosity=2)
+    #simulate(verbosity=2)
+    ar = sys.argv; 
+    if(len(ar)>1):
+        runSims(int(ar[1]),ar[2]); 
+    else:
+        runSims(2,'Test'); 
 
 
