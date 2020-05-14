@@ -7,8 +7,21 @@ import numpy as np;
 
 def check():
 
-    hum = np.load("../../../../../mnt/d/SimHARPS/simHARPS_Human_nom.npy").item(); 
+    #hum = np.load("../../../../../mnt/d/SimHARPS/simHARPS_Human_nom.npy").item(); 
     #hum = np.load("../../../../../mnt/d/SimHARPS/simHARPS_Nonhuman_nom.npy").item(); 
+
+    #hum = np.load('../data/simHARPS_Nom_C_p1.npy',allow_pickle=True).item(); 
+
+   # hum = np.load('../data/simHARPS_Nom_C_p5.npy',allow_pickle=True).item(); 
+
+
+    #hum = np.load('../data/simHARPS_Nom_C_1.npy',allow_pickle=True).item(); 
+
+    #hum = np.load('../data/simHARPS_Nom_C_2.npy',allow_pickle=True).item(); 
+    #hum = np.load('../data/simHARPS_Nom_C_5.npy',allow_pickle=True).item(); 
+    print("The Best option for Exploration: 1")
+
+    hum = np.load('../data/simHARPS_Nom_C_10.npy',allow_pickle=True).item(); 
 
     allTimes = []; 
     allCatchTimes = []; 
