@@ -11,7 +11,7 @@ from sketchGen import Sketch
 gamma = .9
 maxTime = 5
 maxDepth = 20
-c = 10
+c = 1
 drone_falseNeg = .01
 drone_falsePos = .01
 human_availability = 0.9; 
