@@ -15,7 +15,9 @@ c = 10
 drone_falseNeg = .01
 drone_falsePos = .01
 human_availability = 0.9; 
+assumed_availability = 0.9; 
 human_accuracy = 0.95; 
+assumed_accuracy = 0.95; 
 human_class_thresh = 0.8; #has to be at least x% of the maximum 
 detect_length = 150; 
 capture_length = 75;
@@ -327,11 +329,16 @@ def generate_o_time(s,a):
 
     human_response = "Null"
     flip = np.random.random(); 
-    if(flip < human_availability):
+    if(flip < assumed_availability):
         if(a[1][0] is not None):
             ske = a[1][0]; 
             # ske = sketchSet[a[1][0]]; 
             human_response = ske.answerQuestion([s[2],s[3]],a[1][1],thresh=human_class_thresh); 
+
+    acc_map = {'No':'Yes','Yes':'No','Null':'Null'}
+    flip = np.random.random(); 
+    if(flip>assumed_accuracy):
+        human_response = acc_map[human_response]
 
 
     full_repsonse = drone_response + " " + human_response; 
@@ -403,7 +410,10 @@ def generate_o(s, a):
             human_response = ske.answerQuestion([s[2],s[3]],a[1][1],thresh=human_class_thresh); 
 
 
-
+    acc_map = {'No':'Yes','Yes':'No','Null':'Null'}
+    flip = np.random.random(); 
+    if(flip>human_accuracy):
+        human_response = acc_map[human_response]
 
 
     full_repsonse = drone_response + " " + human_response; 
