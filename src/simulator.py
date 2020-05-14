@@ -17,7 +17,7 @@ def computeTheta(a,b):
     theta = np.arctan2(vec[1],vec[0])
     theta = np.degrees(theta); 
     return theta
-
+ 
 
 def simulate(verbosity = 0):
 
@@ -28,8 +28,8 @@ def simulate(verbosity = 0):
     solver = POMCP('graphSpec')
 
     maxFlightTime = 300 #6 minutes
-    #human_sketch_chance = 1/60; #about once a minute
-    human_sketch_chance = 0; 
+    human_sketch_chance = 1/60; #about once a minute
+    #human_sketch_chance = 0; 
 
     # Initialize belief and state
     # ------------------------------------------------------
@@ -44,15 +44,15 @@ def simulate(verbosity = 0):
     for i in range(0, len(target)):
         sSet.append([trueS[0], trueS[1], target[i][0],target[i][1], curs[i], goals[i], 0, trueS[7]])
 
-    fig,ax = plt.subplots(); 
+    fig,ax = plt.subplots();
+
 
 
     # DEBUG: Add initial sketch
     # ------------------------------------------------------
-    # params = {'centroid': [500, 500], 'dist_nom': 50, 'dist_noise': .25,
-    #   'angle_noise': .3, 'pois_mean': 4, 'area_multiplier': 5, 'name': "Test", 'steepness': 20}
-    # ske = Sketch(params)
-    # solver.addSketch(trueS[7],ske);
+    params = {'centroid': [500, 500], 'dist_nom': 50,'angle_noise': .3,'dist_noise': .25, 'pois_mean': 4, 'area_multiplier': 5, 'name': "Test", 'steepness': 20}
+    ske = Sketch(params)
+    solver.addSketch(trueS[7],ske);
 
 
     # Set up sketches
@@ -310,8 +310,11 @@ def runSims(numRuns,tag):
     run = 0; 
     while(run < numRuns):
         print('Simulation: {} of {}'.format(run+1,numRuns)); 
-
-        dataRun = simulate(verbosity=0); 
+        breakFlag = False; 
+        try:
+            dataRun = simulate(verbosity=0); 
+        except Exception:
+            continue;
 
         run += 1; 
         dataPackage['sims'].append(dataRun);
