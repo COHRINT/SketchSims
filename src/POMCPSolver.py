@@ -49,6 +49,8 @@ class POMCP:
         self.offRoadSpeed = mod.offRoadSpeed
         self.offRoadDev = mod.offRoadDev
         self.leaveRoadChance = mod.leaveRoadChance
+        self.assumed_accuracy = mod.assumed_accuracy
+        self.assumed_availability = mod.assumed_availability
 
         #self.buildActionSet(); 
 

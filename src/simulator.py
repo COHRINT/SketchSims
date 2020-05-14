@@ -9,7 +9,7 @@ from collections import deque
 import math
 from shapely.geometry import Polygon, Point
 import yaml
-
+import os
 
 def computeTheta(a,b):
     #a is agent, b is goal
@@ -27,7 +27,7 @@ def simulate(verbosity = 0):
     h = Node()
     solver = POMCP('graphSpec')
 
-    maxFlightTime = 300 #6 minutes
+    maxFlightTime = 600 #10 minutes
     human_sketch_chance = 1/60; #about once a minute
     #human_sketch_chance = 0; 
 
@@ -103,7 +103,9 @@ def simulate(verbosity = 0):
     data['human_availability'] = solver.human_availability
     data['maxFlightTime'] = maxFlightTime; 
     data['human_sketch_chance'] = human_sketch_chance; 
-
+    data['assumed_availability'] = solver.assumed_availability
+    data['assumed_accuracy'] = solver.assumed_accuracy;
+    data['Captured'] = False; 
     #print(data['maxTime']); 
 
 
@@ -193,6 +195,7 @@ def simulate(verbosity = 0):
         o = o1 + " Null"; 
         if("Captured" in o):
             endFlag = True; 
+            data['Captured'] = True; 
 
         if(verbosity > 1):
             print("Drone Observation: {}".format(o1)); 
@@ -269,7 +272,7 @@ def simulate(verbosity = 0):
         # check if human sketched anything
         # ------------------------------------------------------
         coin = np.random.random(); 
-        if(coin < human_sketch_chance):
+        if(coin < human_sketch_chance and len(sketchQueue) > 0):
             ske = sketchQueue.pop(); 
             solver.addSketch(trueS[7],ske);
             if(verbosity > 1):
@@ -303,9 +306,13 @@ def runSims(numRuns,tag):
     #Dictionary with sims and meta data
     #Sims is list of dictionaries, 1 per run
 
+    if(not os.path.exists('../data/{}'.format(tag))):
+        print("Creating Data Directory: /data/{}".format(tag)); 
+        os.mkdir('../data/{}'.format(tag)); 
+
     print("Beginning Data Collection: {}".format(tag)); 
 
-    dataPackage = {'sims':[],'numRuns':numRuns,'tag':tag}
+
     #for i in range(0,numRuns):
     run = 0; 
     while(run < numRuns):
@@ -316,12 +323,21 @@ def runSims(numRuns,tag):
         except Exception:
             continue;
 
-        run += 1; 
-        dataPackage['sims'].append(dataRun);
-        print("Time to Capture: {}s".format(dataPackage['sims'][-1]['TotalTime']))
-        print(""); 
+        
+        #dataPackage['sims'].append(dataRun);
+        dataPackage = dataRun
+        dataPackage['numRuns'] = numRuns;
+        dataPackage['tag'] = tag; 
+        if(dataPackage['Captured']):
+            print("Time to Capture: {}s".format(dataPackage['TotalTime']))
+            print(""); 
+        else:
+            print("Agent failed after {}s".format(dataPackage['TotalTime'])); 
+            print(""); 
 
-        np.save('../data/simHARPS_{}'.format(tag),dataPackage); 
+        np.save('../data/{}/{}_{}'.format(tag,tag,run),dataPackage); 
+
+        run += 1; 
     print("Simulation Set Complete, Data Saved"); 
 
 if __name__ == '__main__':
