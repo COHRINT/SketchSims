@@ -10,6 +10,7 @@ import math
 from shapely.geometry import Polygon, Point
 import yaml
 import os
+from scipy.stats import expon
 
 def computeTheta(a,b):
     #a is agent, b is goal
@@ -28,7 +29,9 @@ def simulate(verbosity = 0):
     solver = POMCP('graphSpec')
 
     maxFlightTime = 600 #10 minutes
-    human_sketch_chance = 1/60; #about once a minute
+    human_sketch_chance = 1/90; #about once a minute
+    pmean = 3; #poisson mean
+    amult = 10; #area multiplier
     #human_sketch_chance = 0; 
 
     # Initialize belief and state
@@ -50,9 +53,9 @@ def simulate(verbosity = 0):
 
     # DEBUG: Add initial sketch
     # ------------------------------------------------------
-    params = {'centroid': [500, 500], 'dist_nom': 50,'angle_noise': .3,'dist_noise': .25, 'pois_mean': 4, 'area_multiplier': 5, 'name': "Test", 'steepness': 20}
-    ske = Sketch(params)
-    solver.addSketch(trueS[7],ske);
+    # params = {'centroid': [500, 500], 'dist_nom': 50,'angle_noise': .3,'dist_noise': .25, 'pois_mean': 4, 'area_multiplier': 5, 'name': "Test", 'steepness': 20}
+    # ske = Sketch(params)
+    # solver.addSketch(trueS[7],ske);
 
 
     # Set up sketches
@@ -61,7 +64,7 @@ def simulate(verbosity = 0):
         fi = yaml.safe_load(stream)
 
     params = {'centroid': [4, 5], 'dist_nom': 2, 'dist_noise': .25,
-              'angle_noise': .3, 'pois_mean': 4, 'area_multiplier': 4, 'name': "Test", 'steepness': 7}
+              'angle_noise': .2, 'pois_mean': pmean, 'area_multiplier': amult, 'name': "Test", 'steepness': 7}
     allSketches = []
     #seedCount = 0
     for k, v in fi['Landmarks'].items():
@@ -75,6 +78,16 @@ def simulate(verbosity = 0):
         #seedCount += 1
     np.random.shuffle(allSketches); 
     sketchQueue = deque(allSketches)
+
+    sketchTimes = []; 
+    expCount = 0; 
+    for i in range(0,len(sketchQueue)):
+        expCount += expon.rvs(scale=1/human_sketch_chance)
+        sketchTimes.append(expCount);  
+
+    # print(sketchTimes); 
+    # sketchTimes.pop(0); 
+    # print(sketchTimes);  
 
 
     # Set up data collection
@@ -106,6 +119,8 @@ def simulate(verbosity = 0):
     data['assumed_availability'] = solver.assumed_availability
     data['assumed_accuracy'] = solver.assumed_accuracy;
     data['Captured'] = False; 
+    data['pois_mean'] = pmean; 
+    data['area_multiplier'] = amult; 
     #print(data['maxTime']); 
 
 
@@ -142,8 +157,18 @@ def simulate(verbosity = 0):
             solver.buildActionSet(trueS[7]);
             if(verbosity > 1):
                 print("Action: {}".format(solver.actionSet[act]));
-            data['Actions'].append(solver.actionSet[act]); 
 
+            try:
+                data['Actions'].append(solver.actionSet[act]);
+            except Exception:
+                #print("FAILURE")
+                #print(len(solver.actionSet),act);
+                #raise; 
+                act = 0; 
+
+
+            #Disable To Blind Plan
+            ########################################################
             if(solver.actionSet[act][1][0] is not None):
                 o = solver.generate_o(trueS,solver.actionSet[act]);
                 if(verbosity > 1):
@@ -271,15 +296,18 @@ def simulate(verbosity = 0):
 
         # check if human sketched anything
         # ------------------------------------------------------
-        coin = np.random.random(); 
-        if(coin < human_sketch_chance and len(sketchQueue) > 0):
-            ske = sketchQueue.pop(); 
-            solver.addSketch(trueS[7],ske);
-            if(verbosity > 1):
-                print("Sketch Made: {}".format(ske.name)); 
-            data['Sketches'].append(ske); 
-        else:
-            data['Sketches'].append(None); 
+        if(decisionFlag):
+            # coin = np.random.random(); 
+            # cTest = expon.cdf(min(curDecTime,solver.maxTime), scale=1/human_sketch_chance)
+            # #print(coin,cTest); 
+            if(len(sketchTimes) > 0 and totalTime > sketchTimes[0]):
+                sketchTimes.pop(0); 
+                #print("Sketch Made: {}".format(ske.name)); 
+                ske = sketchQueue.pop(); 
+                solver.addSketch(trueS[7],ske);
+                if(verbosity > 1):
+                    print("Sketch Made: {}".format(ske.name)); 
+                data['Sketches'].append(ske); 
 
 
         # save everything
@@ -315,6 +343,7 @@ def runSims(numRuns,tag):
 
     #for i in range(0,numRuns):
     run = 0; 
+    allCatchTimes = []; 
     while(run < numRuns):
         print('Simulation: {} of {}'.format(run+1,numRuns)); 
         breakFlag = False; 
@@ -322,6 +351,7 @@ def runSims(numRuns,tag):
             dataRun = simulate(verbosity=0); 
         except Exception:
             continue;
+        #dataRun = simulate(verbosity=0); 
 
         
         #dataPackage['sims'].append(dataRun);
@@ -330,10 +360,13 @@ def runSims(numRuns,tag):
         dataPackage['tag'] = tag; 
         if(dataPackage['Captured']):
             print("Time to Capture: {}s".format(dataPackage['TotalTime']))
-            print(""); 
+            allCatchTimes.append(dataPackage['TotalTime']);
         else:
             print("Agent failed after {}s".format(dataPackage['TotalTime'])); 
-            print(""); 
+
+        print("Ratio of Captures: {}".format(len(allCatchTimes)/(run+1))); 
+        print("Average Capture Time: {}".format(np.mean(allCatchTimes))); 
+        print(""); 
 
         np.save('../data/{}/{}_{}'.format(tag,tag,run),dataPackage); 
 

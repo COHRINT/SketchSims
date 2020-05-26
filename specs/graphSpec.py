@@ -9,15 +9,18 @@ from shapely.geometry import Polygon, Point
 from sketchGen import Sketch
 
 gamma = .9
-maxTime = 5
+maxTime = 10 #10
 maxDepth = 20
 c = 1
 drone_falseNeg = .01
 drone_falsePos = .01
+
 human_availability = 0.9; 
 assumed_availability = 0.9; 
-human_accuracy = 0.95; 
-assumed_accuracy = 0.95; 
+
+human_accuracy = 0.9; 
+assumed_accuracy = 0.9; 
+
 human_class_thresh = 0.8; #has to be at least x% of the maximum 
 detect_length = 150; 
 capture_length = 75;
@@ -31,8 +34,8 @@ offRoadDev = 1
 leaveRoadChance = 1/60 #About every minute or so
 
 
-maxTreeQueries = 3000
-sampleCount = 3000
+maxTreeQueries = 3000 #3000
+sampleCount = 3000 # 3000
 agentSpeed = 15 #m/s
 agentDev = 0;
 problemName = 'Graph'
@@ -266,7 +269,7 @@ def generate_r_time(s,a):
         #return 1; 
         return -1; 
     else:
-        return -1; 
+        return -2; 
 
 
 def generate_r(s, a):
@@ -295,7 +298,7 @@ def generate_r(s, a):
         #return 1; 
         return -1; 
     else:
-        return -1; 
+        return -2; 
         
     #return 100 - 100*(dist(s)/1000); 
 

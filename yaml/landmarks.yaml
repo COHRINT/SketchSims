@@ -42,3 +42,35 @@
   "Dune":
     loc: [855, 365]
     radius: 60
+
+  "Mountain Pond":
+    loc: [490,465]
+    radius: 40
+
+  "COHRINT Peak":
+    loc: [400,500]
+    radius: 15
+
+  "Mount RECUV":
+    loc: [490, 575]
+    radius: 15
+
+  "Blue House":
+    loc: [90,785]
+    radius: 10
+
+  "FarmHouse2":
+    loc: [210,193]
+    radius: 10
+
+  "FarmHouse3":
+    loc: [210, 97]
+    radius: 10
+
+  "Water Tower":
+    loc: [135,940]
+    radius: 20
+
+  "Gravel Pit":
+    loc: [215, 700]
+    radius: 20
