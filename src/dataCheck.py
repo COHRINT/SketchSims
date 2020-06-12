@@ -70,6 +70,7 @@ def poisCheck():
     plt.ylabel('Ratio of Captures to Total Runs'); 
     plt.xlabel('Poisson Mean'); 
     plt.title("Effect of Varying Poisson Means on POMDP Performance"); 
+    plt.axhline(0.63, linestyle='--',color='black',label='Nonhuman Average')
     plt.legend(); 
     plt.savefig('../figs/poisson_graph.png'); 
 
@@ -152,6 +153,7 @@ def amultCheck():
     plt.ylabel('Catch Ratio'); 
     plt.xlabel('Area Mutliplier'); 
     plt.title("Effect of Varying Near Area Multiplier on POMDP Performance"); 
+    plt.axhline(0.63, linestyle='--',color='black',label='Nonhuman Average')
     plt.legend(); 
     plt.savefig('../figs/areaMult_graph.png'); 
 
@@ -236,6 +238,7 @@ def sketchRateCheck():
     plt.xticks([15,30,60,120,240],[15,30,60,120,'inf']); 
     plt.ylabel('Catch Ratio'); 
     plt.xlabel('Sketch Rate (s)'); 
+    plt.axhline(0.63, linestyle='--',color='black',label='Nonhuman Average')
     plt.title("Effect of Varying Sketch Rate on POMDP Performance"); 
     plt.legend(); 
     plt.savefig('../figs/sketchRate_graph.png'); 
@@ -360,6 +363,7 @@ def accuracyDataCheck():
     ax.set_xlabel('Actual Accuracy'); 
     ax.set_ylabel("Capture Rate"); 
     plt.title("Average effect of Human Accuracy on Capture Rate"); 
+    ax.axhline(0.63, linestyle='--',color='black',label='Nonhuman Average')
     plt.legend(); 
     plt.savefig('../figs/acc_true.png')
 
@@ -376,6 +380,7 @@ def accuracyDataCheck():
     ax.set_ylabel("Capture Rate"); 
     ax.set_xlabel("Assumed Accuracy"); 
     plt.title("Average Effect of Assumed Accuracy on Capture Rate")
+    ax.axhline(0.63, linestyle='--',color='black',label='Nonhuman Average')
     plt.legend(); 
     plt.savefig('../figs/acc_think.png'); 
 
@@ -387,6 +392,7 @@ def accuracyDataCheck():
     ax.scatter(rangX,tmp,s=50,marker='*',color='black', label='Tested Values'); 
     ax.set_xlabel("Matched Accuracy"); 
     ax.set_ylabel("Catch Rate"); 
+    ax.axhline(0.63, linestyle='--',color='black',label='Nonhuman Average')
     plt.legend(); 
     plt.title("Effect of Matched Accuracy on Capture Rate"); 
     plt.savefig('../figs/acc_matched.png'); 
@@ -473,6 +479,7 @@ def availabilityDataCheck():
     ax.scatter(rangX,tmp,s=50,marker='*',color='black', label='Tested Values'); 
     ax.set_xlabel('Actual Availability'); 
     ax.set_ylabel("Capture Rate"); 
+    ax.axhline(0.63, linestyle='--',color='black',label='Nonhuman Average')
     plt.title("Average effect of Human Availability on Capture Rate"); 
     plt.legend(); 
     plt.savefig('../figs/avail_true.png')
@@ -489,64 +496,66 @@ def availabilityDataCheck():
     ax.scatter(rangX,tmp,s=50,marker='*',color='black', label='Tested Values'); 
     ax.set_ylabel("Capture Rate"); 
     ax.set_xlabel("Assumed Availability"); 
+    ax.axhline(0.63, linestyle='--',color='black',label='Nonhuman Average')
     plt.title("Average Effect of Assumed Availability on Capture Rate")
     plt.legend(); 
     plt.savefig('../figs/avail_think.png'); 
 
-    # fig,ax = plt.subplots(); 
-    # tmp = []; 
-    # for i in range(0,5):
-    #     tmp.append(x[i][i]); 
-    # ax.plot(rangX,tmp); 
-    # ax.scatter(rangX,tmp,s=50,marker='*',color='black', label='Tested Values'); 
-    # ax.set_xlabel("Matched Availability"); 
-    # ax.set_ylabel("Catch Rate"); 
-    # plt.legend(); 
-    # plt.title("Effect of Matched Availability on Capture Rate"); 
-    # plt.savefig('../figs/avail_matched.png'); 
+    fig,ax = plt.subplots(); 
+    tmp = []; 
+    for i in range(0,5):
+        tmp.append(x[i][i]); 
+    ax.plot(rangX,tmp); 
+    ax.scatter(rangX,tmp,s=50,marker='*',color='black', label='Tested Values'); 
+    ax.set_xlabel("Matched Availability"); 
+    ax.set_ylabel("Catch Rate"); 
+    ax.axhline(0.63, linestyle='--',color='black',label='Nonhuman Average')
+    plt.legend(); 
+    plt.title("Effect of Matched Availability on Capture Rate"); 
+    plt.savefig('../figs/avail_matched.png'); 
 
 
 
-    # plt.figure(); 
-    # allSigX = []; 
-    # allSigY = []; 
-    # allTests = np.zeros(shape=(5,5)); 
-    # for i in range(0,5):
-    #     for j in range(0,i):
-    #         allTests[i,j] = stats.binom_test(tmp[i]*100,n=100,p=tmp[j]); 
-    #         if(allTests[i,j] < 0.05):
-    #             allSigX.append(j); 
-    #             allSigY.append(i); 
-    #     for j in range(i,5):
-    #         allTests[i,j] = np.nan; 
+    plt.figure(); 
+    allSigX = []; 
+    allSigY = []; 
+    allTests = np.zeros(shape=(5,5)); 
+    for i in range(0,5):
+        for j in range(0,i):
+            allTests[i,j] = stats.binom_test(tmp[i]*100,n=100,p=tmp[j]); 
+            if(allTests[i,j] < 0.05):
+                allSigX.append(j); 
+                allSigY.append(i); 
+        for j in range(i,5):
+            allTests[i,j] = np.nan; 
 
-    #     allTests[i,i] = np.nan; 
-    # plt.imshow(allTests,vmax=1.0,vmin=0);
-    # plt.yticks([0,1,2,3,4],[.3,.5,.7,.9,.95]); 
-    # plt.xticks([0,1,2,3,4],[.3,.5,.7,.9,.95]); 
-    # plt.colorbar(); 
-    # for i in range(0,5):
-    #     for j in range(0,i):
-    #         if(allTests[i,j] != np.nan):
-    #             tmp = str(allTests[i,j]); 
-    #             tmp = tmp[0:5];
-    #             if(allTests[i,j] < 0.001):
-    #                 tmp = "<0.001"; 
-    #             if(allTests[i,j] < 0.05):
-    #                 tmp = tmp+'*'; 
-    #                 if(allTests[i,j] < 0.01):
-    #                     tmp = tmp+'*'; 
-    #                     if(allTests[i,j] < 0.001):
-    #                         tmp = tmp+'*'; 
+        allTests[i,i] = np.nan; 
+    plt.imshow(allTests,vmax=1.0,vmin=0);
+    plt.yticks([0,1,2,3,4],[.3,.5,.7,.9,.95]); 
+    plt.xticks([0,1,2,3,4],[.3,.5,.7,.9,.95]); 
+    plt.colorbar(); 
+    for i in range(0,5):
+        for j in range(0,i):
+            if(allTests[i,j] != np.nan):
+                tmp = str(allTests[i,j]); 
+                tmp = tmp[0:5];
+                if(allTests[i,j] < 0.001):
+                    tmp = "<0.001"; 
+                if(allTests[i,j] < 0.05):
+                    tmp = tmp+'*'; 
+                    if(allTests[i,j] < 0.01):
+                        tmp = tmp+'*'; 
+                        if(allTests[i,j] < 0.001):
+                            tmp = tmp+'*'; 
 
-    #             plt.text(j,i+0.25,tmp,fontsize=10,verticalalignment = 'center',horizontalalignment='center',color='red'); 
-    # plt.scatter(allSigX,allSigY,marker='*',s=50, color='red',label='Significant p<0.05')
-    # plt.xlabel("Tested Values"); 
-    # plt.ylabel("Tested Values")
-    # plt.axis('tight'); 
-    # plt.title("Binomial Significance of Matched Availability"); 
-    # plt.legend();
-    # plt.savefig('../figs/avail_matched_sig.png'); 
+                plt.text(j,i+0.25,tmp,fontsize=10,verticalalignment = 'center',horizontalalignment='center',color='red'); 
+    plt.scatter(allSigX,allSigY,marker='*',s=50, color='red',label='Significant p<0.05')
+    plt.xlabel("Tested Values"); 
+    plt.ylabel("Tested Values")
+    plt.axis('tight'); 
+    plt.title("Binomial Significance of Matched Availability"); 
+    plt.legend();
+    plt.savefig('../figs/avail_matched_sig.png'); 
 
 
 def predictiveObsPlanningExtract():
@@ -584,6 +593,9 @@ def predictiveObsPlanningCheck():
     #plt.scatter(x,allRatio,s=50,marker='*',color='black'); 
     #plt.xticks([15,30,60,120,240],[15,30,60,120,'inf']); 
     plt.bar([0,1],allRatio,color=['red','blue'],edgecolor='black',linewidth=2); 
+    plt.text(0,allRatio[0]+0.012,str(allRatio[0]),verticalalignment = 'center',horizontalalignment = 'center'); 
+    plt.text(1,allRatio[1]+0.012,str(allRatio[1]),verticalalignment = 'center',horizontalalignment = 'center'); 
+    
     plt.ylabel('Catch Ratio'); 
     #plt.xlabel('Sketch Rate (s)'); 
     plt.xticks([0,1],['Blind','Predictive']); 
@@ -597,6 +609,62 @@ def predictiveObsPlanningCheck():
     plt.title("Significance of Predictive Tree Planning: {0:.2f}".format(test)); 
     plt.savefig('../figs/predictive_sig.png'); 
     #plt.show();
+
+def humanDataExtract():
+    allDat = []; 
+
+    print("Extracting data for human test"); 
+
+    mults = ['Human_Long','NonHuman_Long']
+
+    for po in mults:
+        print("Plan: {}".format(po)); 
+        allCatchTimes = []; 
+        for i in range(0,100):
+            #print(i); 
+            data = np.load('../data/{}/{}_{}.npy'.format(po,po,i), allow_pickle=True).item(); 
+            if(data['Captured'] == True):
+                allCatchTimes.append(data['TotalTime']); 
+            del data
+        allDat.append(allCatchTimes); 
+    np.save('../data/human_nonhuman_small.npy',allDat);
+
+
+def humanDataCheck():
+
+    plt.figure(); 
+    data = np.load('../data/human_nonhuman_small.npy',allow_pickle=True)
+    allAves = []; 
+    allSD = []; 
+    allRatio = [];  
+    for d in data:
+        allAves.append(np.mean(d)); 
+        allSD.append(np.std(d)); 
+        allRatio.append(len(d)/100); 
+
+    #x = [1.5,2,3,4,5,10];
+    #x = [15,30,60,120,240];  
+    #plt.plot(x,allRatio);
+    #plt.scatter(x,allRatio,s=50,marker='*',color='black'); 
+    #plt.xticks([15,30,60,120,240],[15,30,60,120,'inf']); 
+    plt.bar([0,1],allRatio,color=['blue','red'],edgecolor='black',linewidth=2); 
+    plt.text(0,allRatio[0]+0.012,str(allRatio[0]),verticalalignment = 'center',horizontalalignment = 'center'); 
+    plt.text(1,allRatio[1]+0.012,str(allRatio[1]),verticalalignment = 'center',horizontalalignment = 'center'); 
+    
+    plt.ylabel('Catch Ratio'); 
+    #plt.xlabel('Sketch Rate (s)'); 
+    plt.xticks([0,1],['Human','Nonhuman']); 
+    
+    
+
+
+    test = stats.binom_test(allRatio[0]*100,n=100,p=allRatio[1]); 
+
+    #print("Binomial Significance of Human Involvement: {}".format(test));
+    if(test < 0.001):
+        test = 'p<0.001'; 
+    plt.title("Significance of Human Involvement: {}".format(test)); 
+    plt.savefig('../figs/human_sig.png'); 
 
 if __name__ == '__main__':
     #poisExtract(); 
@@ -615,3 +683,6 @@ if __name__ == '__main__':
 
     #predictiveObsPlanningExtract(); 
     predictiveObsPlanningCheck(); 
+
+    #humanDataExtract(); 
+    humanDataCheck(); 
