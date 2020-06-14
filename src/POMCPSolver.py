@@ -59,7 +59,7 @@ class POMCP:
         actionSet = []; 
 
         nodeSet = []; 
-
+        forbidden = [39,40,41,42,47]; 
 
         for n in s.neighbors:
             if(n not in nodeSet):
@@ -69,6 +69,8 @@ class POMCP:
                     if(s.loc[0] == n.loc[0] and n.loc[0] == n2.loc[0]):
                         continue; 
                     elif(s.loc[1] == n.loc[1] and n.loc[1] == n2.loc[1]):
+                        continue; 
+                    elif(n2.ident in forbidden):
                         continue; 
                     nodeSet.append(n2);
 
@@ -95,6 +97,7 @@ class POMCP:
 
         nodeSet = []; 
 
+        forbidden = [39,40,41,42,47]; 
 
         for n in s.neighbors:
             if(n not in nodeSet):
@@ -104,6 +107,8 @@ class POMCP:
                     if(s.loc[0] == n.loc[0] and n.loc[0] == n2.loc[0]):
                         continue; 
                     elif(s.loc[1] == n.loc[1] and n.loc[1] == n2.loc[1]):
+                        continue; 
+                    elif(n2.ident in forbidden):
                         continue; 
                     nodeSet.append(n2);
 
