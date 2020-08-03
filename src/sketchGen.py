@@ -391,6 +391,8 @@ class Sketch:
         for i in range(0, numDegrees):
             testPoints.append([ra*np.cos((i/numDegrees)*360 * np.pi/180)+cent.x,
                                ra*np.sin((i/numDegrees)*360 * np.pi/180)+cent.y])
+        # for i in range(0,10000):
+        #     testPoints.append([np.random.random()*10,np.random.random()*10])
 
         testPoints = np.array(testPoints)
 
@@ -501,14 +503,14 @@ def testQuestions():
     plt.show();
 
 if __name__ == '__main__':
-    # np.random.seed(3)
+    np.random.seed(3)
 
-    # params = {'centroid': [4, 5], 'dist_nom': 2, 'dist_noise': .25,
-    #           'angle_noise': .3, 'pois_mean': 2, 'area_multiplier': 3, 'name': "Test", 'steepness': 5}
-    # ske = Sketch(params)
+    params = {'centroid': [4, 5], 'dist_nom': 2, 'dist_noise': .25,
+              'angle_noise': .3, 'pois_mean': 2, 'area_multiplier': 3, 'name': "Test", 'steepness': 5}
+    ske = Sketch(params)
 
-    # # ske.displayPoints(show=False)
-    # # ske.displayProbTables(show=False)
+    ske.displayPoints(show=True)
+    ske.displayProbTables(show=True)
     # ske.displayClasses()
 
-    testQuestions(); 
+    #testQuestions(); 
