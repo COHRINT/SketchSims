@@ -9,7 +9,7 @@ from shapely.geometry import Polygon, Point
 from sketchGen import Sketch
 
 gamma = .9
-maxTime = 10 #10
+maxTime = .5 #10
 maxDepth = 20
 c = 1
 drone_falseNeg = .01
@@ -18,8 +18,8 @@ drone_falsePos = .01
 human_availability = 0.9; 
 assumed_availability = 0.9; 
 
-human_accuracy = 0.9; 
-assumed_accuracy = 0.9; 
+human_accuracy = 0.98; 
+assumed_accuracy = 0.98; 
 
 human_class_thresh = 0.8; #has to be at least x% of the maximum 
 detect_length = 150; 

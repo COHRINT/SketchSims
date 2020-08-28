@@ -53,9 +53,9 @@ def simulate(verbosity = 0):
 
     # DEBUG: Add initial sketch
     # ------------------------------------------------------
-    # params = {'centroid': [500, 500], 'dist_nom': 50,'angle_noise': .3,'dist_noise': .25, 'pois_mean': 4, 'area_multiplier': 5, 'name': "Test", 'steepness': 20}
-    # ske = Sketch(params)
-    # solver.addSketch(trueS[7],ske);
+    params = {'centroid': [500, 500], 'dist_nom': 50,'angle_noise': .3,'dist_noise': .25, 'pois_mean': 4, 'area_multiplier': 5, 'name': "Test", 'steepness': 20}
+    ske = Sketch(params)
+    solver.addSketch(trueS[7],ske);
 
 
     # Set up sketches
@@ -376,11 +376,11 @@ def runSims(numRuns,tag):
 if __name__ == '__main__':
 
 
-    #simulate(verbosity=2)
-    ar = sys.argv; 
-    if(len(ar)>1):
-        runSims(int(ar[1]),ar[2]); 
-    else:
-        runSims(2,'Test'); 
+    simulate(verbosity=2)
+    # ar = sys.argv; 
+    # if(len(ar)>1):
+    #     runSims(int(ar[1]),ar[2]); 
+    # else:
+    #     runSims(2,'Test'); 
 
 
