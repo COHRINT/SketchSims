@@ -8,6 +8,7 @@ treeNode.py: node class used by POMCP for planning
 softmaxModels.py: implements softmax functions
 gaussianMixtures.py: implements Gaussian Mixtures
 humanEmulator.py: Not Used, ended up doing it all in sketchGen.py, didn't get rid of it for reasons of vague unease
+test_image_overlay.py: Conceptual Explainer coded up in pyqt, visually shows sketches and most likely options. Pointy-clicky
 
 DATA:
 Folder storing all the data from testing, files named for test variable and parameters
