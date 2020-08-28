@@ -29,7 +29,7 @@ def simulate(verbosity = 0):
     solver = POMCP('graphSpec')
 
     maxFlightTime = 600 #10 minutes
-    human_sketch_chance = 1/90; #about once a minute
+    human_sketch_chance = 1/60; #about once a minute
     pmean = 3; #poisson mean
     amult = 10; #area multiplier
     #human_sketch_chance = 0; 
@@ -320,7 +320,7 @@ def simulate(verbosity = 0):
         h = Node(); 
         
         # repeat
-        if(verbosity > 0):
+        if(verbosity > 1):
             print(""); 
         if(endFlag):
             break; 
@@ -348,7 +348,7 @@ def runSims(numRuns,tag):
         print('Simulation: {} of {}'.format(run+1,numRuns)); 
         breakFlag = False; 
         try:
-            dataRun = simulate(verbosity=0); 
+            dataRun = simulate(verbosity=2); 
         except Exception:
             continue;
         #dataRun = simulate(verbosity=0); 
