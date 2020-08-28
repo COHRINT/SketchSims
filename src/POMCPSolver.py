@@ -261,6 +261,8 @@ class POMCP:
         weights = np.zeros(shape=(len(sSet))); 
         [drone_o,human_o] = o.split();
 
+
+
         for i in range(0,len(sSet)):
             s = sSet[i]; 
             theta = computeTheta([s[0],s[1]],act[0].loc);
@@ -278,6 +280,7 @@ class POMCP:
             detect_points.append([s[0]+detect_length*np.cos(theta+90)/2, s[1]+detect_length*np.sin(theta+90)/2]);
             detect_points.append([act[0].loc[0]+detect_length*np.cos(theta-90)/2, act[0].loc[1]+detect_length*np.sin(theta-90)/2])
             detect_points.append([act[0].loc[0]+detect_length*np.cos(theta+90)/2, act[0].loc[1]+detect_length*np.sin(theta+90)/2])
+            #print(detect_points); 
             detect_poly  = Polygon(detect_points); 
 
 

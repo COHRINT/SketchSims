@@ -38,7 +38,10 @@ class Sketch:
 
         self.name = params['name']
         self.centroid = params['centroid']
-        self.points = self.generateSketch(params)
+        if(params['points'] is not None):
+            self.points = params['points']; 
+        else:
+            self.points = self.generateSketch(params)
         self.inflated = self.inflatePoints(params)
         self.labels = ['East', 'NorthEast', 'North', 'NorthWest',
                        'West', 'SouthWest', 'South', 'SouthEast']
