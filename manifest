@@ -1,0 +1,34 @@
+SRC:
+simulator.py: Main file. Run with arguments for number of sims and tag
+POMCPSolver.py: used by simulator, online solver
+dataCheck.py: analysis of collected data for various tests, makes figures
+sketchGen.py: Makes and augments sketches, answers questions about them when asked
+roadNode.py: creates and updates the simulated target models, creates the road network
+treeNode.py: node class used by POMCP for planning
+softmaxModels.py: implements softmax functions
+gaussianMixtures.py: implements Gaussian Mixtures
+humanEmulator.py: Not Used, ended up doing it all in sketchGen.py, didn't get rid of it for reasons of vague unease
+
+DATA:
+Folder storing all the data from testing, files named for test variable and parameters
+
+
+FIGS:
+Created Figures
+
+IMG:
+Images used for interface and sanity tests such as test_image_overlay.py
+
+YAML:
+config files containing locations of landmarks and roadnetwork intersections
+
+SPECS: 
+Folder contains problem specifications
+graphSpec.py: The problem in the thesis, with all the parameters and generators functions to make POMCP and simulator go
+gridSpec.py: older version of the thesis problem using cardnial actions instead of graph movements. Lame and boring
+
+
+
+
+
+
