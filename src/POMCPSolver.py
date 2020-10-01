@@ -14,7 +14,7 @@ sys.path.append("../specs")
 
 class POMCP:
 
-    def __init__(self, specFile):
+    def __init__(self, specFile, pullAllowed=True):
         mod = importlib.import_module(specFile)
         self.generate_s = mod.generate_s
         self.generate_o = mod.generate_o
@@ -52,6 +52,8 @@ class POMCP:
         self.assumed_accuracy = mod.assumed_accuracy
         self.assumed_availability = mod.assumed_availability
 
+        self.pullAllowed = pullAllowed;  
+
         #self.buildActionSet(); 
 
 
@@ -79,15 +81,15 @@ class POMCP:
         # ------------------------------------------------------
         for i in range(0,len(nodeSet)):
             actionSet.append([nodeSet[i],[None,None]]); 
-
-            for ske in self.sketchSet:
-                #inside
-                actionSet.append([nodeSet[i],[ske,'Inside']])
-                #near
-                actionSet.append([nodeSet[i],[ske,'Near']])
-                for lab in ske.labels:
-                    actionSet.append([nodeSet[i],[ske,lab]]); 
-                    #actionSet.append([nodeSet[i],[ske,"Near " + lab]]); 
+            if(pullAllowed):
+                for ske in self.sketchSet:
+                    #inside
+                    actionSet.append([nodeSet[i],[ske,'Inside']])
+                    #near
+                    actionSet.append([nodeSet[i],[ske,'Near']])
+                    for lab in ske.labels:
+                        actionSet.append([nodeSet[i],[ske,lab]]); 
+                        #actionSet.append([nodeSet[i],[ske,"Near " + lab]]); 
 
         return actionSet; 
 
@@ -119,15 +121,15 @@ class POMCP:
         # ------------------------------------------------------
         for i in range(0,len(nodeSet)):
             self.actionSet.append([nodeSet[i],[None,None]]); 
-
-            for ske in self.sketchSet:
-                #inside
-                self.actionSet.append([nodeSet[i],[ske,'Inside']])
-                #near
-                self.actionSet.append([nodeSet[i],[ske,'Near']])
-                for lab in ske.labels:
-                    self.actionSet.append([nodeSet[i],[ske,lab]]); 
-                    #self.actionSet.append([nodeSet[i],[ske,"Near " + lab]]); 
+            if(self.pullAllowed):
+                for ske in self.sketchSet:
+                    #inside
+                    self.actionSet.append([nodeSet[i],[ske,'Inside']])
+                    #near
+                    self.actionSet.append([nodeSet[i],[ske,'Near']])
+                    for lab in ske.labels:
+                        self.actionSet.append([nodeSet[i],[ske,lab]]); 
+                        #self.actionSet.append([nodeSet[i],[ske,"Near " + lab]]); 
 
         # For separated action spaces
         # ------------------------------------------------------

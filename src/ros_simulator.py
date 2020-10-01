@@ -30,7 +30,7 @@ def computeTheta(a,b):
 
 class ROSPOM():
 
-	def __init__(self):
+	def __init__(self, condition = "Both"):
 
 		print("Initializing Planner"); 
 		
@@ -62,7 +62,10 @@ class ROSPOM():
 		print("Building Road Network"); 
 		network = readInNetwork('../yaml/flyovertonShift.yaml')
 
-		self.solver = POMCP('graphSpec')
+		if(condition == "Push"):
+			self.solver = POMDP('graphSpec',False); 
+		else:
+			self.solver = POMCP('graphSpec',True)
 
 		maxFlightTime = 600 #10 minutes
 		human_sketch_chance = 1/90; #about once a minute
@@ -275,7 +278,9 @@ class ROSPOM():
 
 if __name__ == '__main__':
 
-	planner = ROSPOM(); 
+	#Conditions: Pull, Push, Both
+	condition = "Pull"; 
+	planner = ROSPOM(condition); 
 
 	while not rospy.is_shutdown():
 		rospy.spin()
