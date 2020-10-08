@@ -61,7 +61,10 @@ class POMCP:
         actionSet = []; 
 
         nodeSet = []; 
-        forbidden = [39,40,41,42,47]; 
+
+        #If you start running into mountains
+        forbidden = [39,40,41,42,47,46,44];
+         # forbidden = []; 
 
         for n in s.neighbors:
             if(n not in nodeSet):
@@ -99,7 +102,9 @@ class POMCP:
 
         nodeSet = []; 
 
-        forbidden = [39,40,41,42,47]; 
+        #If you start running into mountains
+        forbidden = [39,40,41,42,47,46,44]; 
+        # forbidden = []; 
 
         for n in s.neighbors:
             if(n not in nodeSet):

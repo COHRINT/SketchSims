@@ -67,7 +67,7 @@ class ROSPOM():
 		network = readInNetwork('../yaml/flyovertonShift.yaml')
 
 		if(condition == "Push"):
-			self.solver = POMDP('graphSpec',False); 
+			self.solver = POMCP('graphSpec',False); 
 		else:
 			self.solver = POMCP('graphSpec',True)
 
@@ -78,7 +78,11 @@ class ROSPOM():
 
 		target, curs, goals = populatePoints(network, self.solver.sampleCount)
 		pickInd = np.random.randint(0, len(target))
-		trueNode = network[51]; 
+
+
+		trueNode = network[51]; #Update this to update the drones belief about its start location
+
+
 		self.solver.buildActionSet(trueNode)
 
 		self.trueS = [trueNode.loc[0], trueNode.loc[1], target[pickInd][0], target[pickInd][1], curs[pickInd], goals[pickInd], 0, trueNode];
@@ -100,8 +104,13 @@ class ROSPOM():
 		msg.data = 1; 
 		self.action_callback(msg); 
 
+		#to the 2droneimages.py
+		#self.client.simSetVehiclePose(self.pose, True, vehicle_name="Drone1").join()
 
-
+		print("Need to call into the drone client to teleport, and then set current possition properly in above lines trueS")
+		print("Should be as simple as changing the network index from 51 to X")
+		print("Also need a ros timer or pyqt timer for stop condition")
+		print("Eliminate nodes from drone action set that are within mountains, in POMCPSolver.py functions getActionSet and buildActionSet")
 
 
 
@@ -301,6 +310,9 @@ if __name__ == '__main__':
 
 	#Conditions: Pull, Push, Both
 	condition = "Both"; #Update to change scenario type
+
+	#TODO: Specify starting configuration of target and drone
+
 	planner = ROSPOM(condition); 
 
 	while not rospy.is_shutdown():
