@@ -52,7 +52,11 @@ class ROSPOM():
 		state_sub = rospy.Subscriber("/Drone1/pose", PoseStamped, self.state_callback)
 		#self.belief_pub = rospy.Publisher("/image_raw", Image, queue_size=1)
 		self.belief_pub = rospy.Publisher("/belief_map", GMPoints, queue_size=1)
+		self.stopCondition_pub = rospy.Publisher("/stopCon",Int16,queue_size=1); 
+		obs_sub = rospy.Subscriber("/Obs",String,self.obs_callback); 
+		self.latestObs = "Null"; 
 
+		self.latestAction = None; 
 
 		self.offset_x = 173.7
 		self.offset_y = 845.6
@@ -112,6 +116,7 @@ class ROSPOM():
 			print("Goal Published"); 
 			h = Node()
 			act,info = self.solver.search(self.sSet, h, depth=self.solver.maxDepth, maxTime = min(self.curDecTime,self.solver.maxTime),inform=True)
+			self.latestAction = act; 
 			self.solver.buildActionSet(self.trueS[7]);
 
 			if(self.solver.actionSet[act][1][0] is not None):
@@ -129,8 +134,8 @@ class ROSPOM():
 				self.sSet = self.solver.dynamicsUpdate(self.sSet,self.solver.actionSet[act]);
 
 			try:
-			
-				self.sSet = self.solver.measurementUpdate_time(self.sSet,self.solver.actionSet[act],'Null Null'); 
+				
+				#self.sSet = self.solver.measurementUpdate_time(self.sSet,self.solver.actionSet[act], 'Null Null'); 
 				self.trueS[7] = self.solver.actionSet[act][0];
 				self.trueS[0] = self.trueS[7].loc[0]; 
 				self.trueS[1] = self.trueS[7].loc[1]; 
@@ -142,11 +147,27 @@ class ROSPOM():
 				print("Belief Update Issue Raised"); 
 				pass; 
 
+	def obs_callback(self,msg):
+		#Function gets called at many times per timestep. Used to update belief and stop condition 
+		self.latestObs = msg.data; 
+		if(self.latestObs == 'Captured'):
+			self.stopCondition_pub.publish(1); 
+			print('Target Spotted!!')
+
+		#Only update measurement if there has been an observation
+		if(self.latestObs!= 'Null'):	
+			print("Observation Made: {}".format(self.latestObs)); 
+			try: 
+				self.sSet = self.solver.measurementUpdate(self.sSet,self.solver.actionSet[self.latestAction], self.latestObs +  ' Null'); 
+			except Exception as e:
+				print("Belief Update Issue Raised"); 
+				pass; 
+
 
 	def answer_callback(self,msg):
 		print("Question Answered: {}".format(msg.data)); 
 
-		obs = 'Null '; 
+		obs = 'Null'
 		if(msg.data == 1):
 			obs += ' Yes'; 
 		elif(msg.data == 0):
@@ -279,7 +300,7 @@ class ROSPOM():
 if __name__ == '__main__':
 
 	#Conditions: Pull, Push, Both
-	condition = "Pull"; 
+	condition = "Both"; #Update to change scenario type
 	planner = ROSPOM(condition); 
 
 	while not rospy.is_shutdown():

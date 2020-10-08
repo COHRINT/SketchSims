@@ -81,7 +81,7 @@ class POMCP:
         # ------------------------------------------------------
         for i in range(0,len(nodeSet)):
             actionSet.append([nodeSet[i],[None,None]]); 
-            if(pullAllowed):
+            if(self.pullAllowed):
                 for ske in self.sketchSet:
                     #inside
                     actionSet.append([nodeSet[i],[ske,'Inside']])
