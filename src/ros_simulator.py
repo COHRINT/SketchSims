@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from sketchGen import Sketch
 from collections import deque
 import math
+import time
 #from shapely.geometry import Polygon, Point
 import yaml
 import os
@@ -30,12 +31,13 @@ def computeTheta(a,b):
 
 class ROSPOM():
 
-	def __init__(self, condition = "Both"):
+	def __init__(self, condition = "Both",start_config = '1'):
 
 		print("Initializing Planner"); 
 		
 		self.sendBelief = False; 
 		self.showBelief = False; 
+		self.zero_time = rospy.Time() #Setting initial time
 
 		self.goal_pub = rospy.Publisher("Drone1/Goal", path, queue_size=1)
 
@@ -43,17 +45,19 @@ class ROSPOM():
 		
 		#self.goal_pub.publish([50],[100],0);
 
+		#Initializing publisher and subscriber nodes
 		reached_sub = rospy.Subscriber("/GoalReached", Int16, self.action_callback); 
 		self.reached_pub = rospy.Publisher("/GoalReached", Int16, queue_size=1)
 		self.question_pub = rospy.Publisher("/Pull", pull,queue_size=1); 
-		answer_sub = rospy.Subscriber("/PullAnswer",Int16, self.answer_callback); 
+		answer_sub = rospy.Subscriber("/PullAnswer",pullAnswer, self.answer_callback); 
 		sketch_sub = rospy.Subscriber('/Sketch', sketch, self.sketch_callback); 
 		push_sub = rospy.Subscriber("/Push",push,self.push_callback)
 		state_sub = rospy.Subscriber("/Drone1/pose", PoseStamped, self.state_callback)
 		#self.belief_pub = rospy.Publisher("/image_raw", Image, queue_size=1)
 		self.belief_pub = rospy.Publisher("/belief_map", GMPoints, queue_size=1)
-		self.stopCondition_pub = rospy.Publisher("/stopCon",Int16,queue_size=1); 
+		self.stopCondition_pub = rospy.Publisher("/stopCon",Int16,queue_size=1); #Publisher for stop condition 
 		obs_sub = rospy.Subscriber("/Obs",String,self.obs_callback); 
+		self.starter = rospy.Publisher("/Start_Con",Int16,queue_size=1); #Publisher for setting drone initial pose
 		self.latestObs = "Null"; 
 
 		self.latestAction = None; 
@@ -61,11 +65,15 @@ class ROSPOM():
 		self.offset_x = 173.7
 		self.offset_y = 845.6
 
-		self.nextGoal = [0,-145]; 
+		# self.nextGoal = [0,-145]; 
+		self.nextGoal = [270,-628];
 
+
+		#Loading yaml file for road network
 		print("Building Road Network"); 
 		network = readInNetwork('../yaml/flyovertonShift.yaml')
 
+		#Specifying scenario for interface and creating corresponding solver
 		if(condition == "Push"):
 			self.solver = POMCP('graphSpec',False); 
 		else:
@@ -79,9 +87,20 @@ class ROSPOM():
 		target, curs, goals = populatePoints(network, self.solver.sampleCount)
 		pickInd = np.random.randint(0, len(target))
 
-
-		trueNode = network[51]; #Update this to update the drones belief about its start location
-
+		#Setting drone start state depending on start condition
+		if start_config == 1:
+			start_index = 51
+            # start_pose = [175,300]
+		elif start_config == 2:
+			start_index = 43
+            # start_ind = [445,748]
+		elif start_config == 3:
+			start_index = 28
+            # start_ind = [811,299]
+		# self.starter.publish(start_index)
+		trueNode = network[start_index]; #Update this to update the drones belief about its start location
+		# trueNode = network[51]; 
+		# rospy.sleep(3)
 
 		self.solver.buildActionSet(trueNode)
 
@@ -98,16 +117,16 @@ class ROSPOM():
 		self.decCounts = 0; 
 
 		self.lastAct = 0; 
+		self.msg_count = 0
 
 		print("Starting Drone Movement")
 		msg = Int16(); 
 		msg.data = 1; 
 		self.action_callback(msg); 
+		
 
-		#to the 2droneimages.py
-		#self.client.simSetVehiclePose(self.pose, True, vehicle_name="Drone1").join()
-
-		print("Need to call into the drone client to teleport, and then set current possition properly in above lines trueS")
+	
+		print("Need to call into the drone client to teleport, and then set current position properly in above lines trueS")
 		print("Should be as simple as changing the network index from 51 to X")
 		print("Also need a ros timer or pyqt timer for stop condition")
 		print("Eliminate nodes from drone action set that are within mountains, in POMCPSolver.py functions getActionSet and buildActionSet")
@@ -120,9 +139,9 @@ class ROSPOM():
 		if(msg.data==1):
 			
 			rospy.sleep(3); 
-			print("Publishing goal: [{},{}]".format(self.nextGoal[0],self.nextGoal[1])); 
-			self.goal_pub.publish([int(self.nextGoal[0])],[int(self.nextGoal[1])],0);
-			print("Goal Published"); 
+			print("Publishing goal: [{},{}]".format(self.nextGoal[0],self.nextGoal[1]))
+			self.goal_pub.publish([int(self.nextGoal[0])],[int(self.nextGoal[1])],0)
+			print("Goal Published")
 			h = Node()
 			act,info = self.solver.search(self.sSet, h, depth=self.solver.maxDepth, maxTime = min(self.curDecTime,self.solver.maxTime),inform=True)
 			self.latestAction = act; 
@@ -130,9 +149,9 @@ class ROSPOM():
 
 			if(self.solver.actionSet[act][1][0] is not None):
 				self.lastAct = act; 
-				self.question_pub.publish("Is the target {} of {}".format(self.solver.actionSet[act][1][1],self.solver.actionSet[act][1][0].name)); 
-				
-
+				message =  pull("Is the target {} of {}".format(self.solver.actionSet[act][1][1],self.solver.actionSet[act][1][0].name),self.msg_count)
+				self.question_pub.publish(message);
+				self.msg_count += 1
 			self.curDecTime = dist(self.trueS,self.solver.actionSet[act][0].loc)/(self.solver.agentSpeed); 
 			self.totalTime += self.curDecTime;
 
@@ -158,10 +177,14 @@ class ROSPOM():
 
 	def obs_callback(self,msg):
 		#Function gets called at many times per timestep. Used to update belief and stop condition 
+		now = rospy.Time.now()
 		self.latestObs = msg.data; 
-		if(self.latestObs == 'Captured'):
+		elapsed_time = now.to_sec()-self.zero_time.to_sec()
+		# print('Timer',elapsed_time)
+		if elapsed_time>=30 and self.latestObs == 'Captured':
 			self.stopCondition_pub.publish(1); 
-			print('Target Spotted!!')
+			print('Target Captured!!')
+			rospy.signal_shutdown('Target Found')
 
 		#Only update measurement if there has been an observation
 		if(self.latestObs!= 'Null'):	
@@ -174,12 +197,12 @@ class ROSPOM():
 
 
 	def answer_callback(self,msg):
-		print("Question Answered: {}".format(msg.data)); 
+		print("Question Answered: {}".format(msg.response)); 
 
 		obs = 'Null'
-		if(msg.data == 1):
+		if(msg.response == 1):
 			obs += ' Yes'; 
-		elif(msg.data == 0):
+		elif(msg.response == 0):
 			obs += ' No'; 
 		else:
 			obs += ' Null'; 
@@ -310,10 +333,9 @@ if __name__ == '__main__':
 
 	#Conditions: Pull, Push, Both
 	condition = "Both"; #Update to change scenario type
+	start_config = 2; #Specify starting configuration of drone. Run with corresponding Unreal file
 
-	#TODO: Specify starting configuration of target and drone
-
-	planner = ROSPOM(condition); 
+	planner = ROSPOM(condition,start_config); 
 
 	while not rospy.is_shutdown():
 		rospy.spin()
