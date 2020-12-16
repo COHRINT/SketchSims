@@ -324,12 +324,13 @@ def generate_o_time(s,a):
 
     capture_poly = Polygon(capture_points);
     target = Point(s[2],s[3]); 
-
+    # print('Capture Points', capture_points)
+    # print('target',target)
     if(detect_poly.contains(target)):
         drone_response = "Detect"
         if(capture_poly.contains(target)):
             drone_response = "Captured"
-
+ 
     human_response = "Null"
     flip = np.random.random(); 
     if(flip < assumed_availability):
@@ -344,9 +345,9 @@ def generate_o_time(s,a):
         human_response = acc_map[human_response]
 
 
-    full_repsonse = drone_response + " " + human_response; 
+    full_response = drone_response + " " + human_response; 
 
-    return full_repsonse;
+    return full_response;
 
 def generate_o(s, a):
 

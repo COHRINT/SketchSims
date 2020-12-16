@@ -53,7 +53,8 @@ class POMCP:
         self.assumed_availability = mod.assumed_availability
 
         self.pullAllowed = pullAllowed;  
-
+        self.forbidden = [39,40,41,42,47,46,44,34,48,43,35,33];
+        self.ActionSet_tm1 = [];
         #self.buildActionSet(); 
 
 
@@ -63,22 +64,23 @@ class POMCP:
         nodeSet = []; 
 
         #If you start running into mountains
-        forbidden = [39,40,41,42,47,46,44];
+        
          # forbidden = []; 
 
         for n in s.neighbors:
             if(n not in nodeSet):
-                nodeSet.append(n); 
-            for n2 in n.neighbors:
-                if(n2 not in nodeSet and n2 is not s):
-                    if(s.loc[0] == n.loc[0] and n.loc[0] == n2.loc[0]):
-                        continue; 
-                    elif(s.loc[1] == n.loc[1] and n.loc[1] == n2.loc[1]):
-                        continue; 
-                    elif(n2.ident in forbidden):
-                        continue; 
-                    nodeSet.append(n2);
-
+                nodeSet.append(n);
+            if (n.ident not in self.forbidden):
+                for n2 in n.neighbors:
+                    if(n2 not in nodeSet and n2 is not s):
+                        if(s.loc[0] == n.loc[0] and n.loc[0] == n2.loc[0]):
+                            continue; 
+                        elif(s.loc[1] == n.loc[1] and n.loc[1] == n2.loc[1]):
+                            continue; 
+                        elif(n2.ident in self.forbidden):
+                            continue; 
+                        nodeSet.append(n2);
+        # print('Calling getActionSet')
 
         # For conjoined action spaces
         # ------------------------------------------------------
@@ -101,26 +103,21 @@ class POMCP:
         self.actionSet = []; 
 
         nodeSet = []; 
-
-        #If you start running into mountains
-        forbidden = [39,40,41,42,47,46,44]; 
-        # forbidden = []; 
-
         for n in s.neighbors:
             if(n not in nodeSet):
                 nodeSet.append(n); 
-            for n2 in n.neighbors:
-                if(n2 not in nodeSet and n2 is not s):
-                    if(s.loc[0] == n.loc[0] and n.loc[0] == n2.loc[0]):
-                        continue; 
-                    elif(s.loc[1] == n.loc[1] and n.loc[1] == n2.loc[1]):
-                        continue; 
-                    elif(n2.ident in forbidden):
-                        continue; 
-                    nodeSet.append(n2);
+            if (n.ident not in self.forbidden):
+                for n2 in n.neighbors:
+                    if(n2 not in nodeSet and n2 is not s):
+                        if(s.loc[0] == n.loc[0] and n.loc[0] == n2.loc[0]):
+                            continue; 
+                        elif(s.loc[1] == n.loc[1] and n.loc[1] == n2.loc[1]):
+                            continue; 
+                        # elif(n2.ident in self.forbidden):
+                            # continue; 
+                        nodeSet.append(n2);
 
-
-
+        # print('Calling buildActionSet')
 
         # For conjoined action spaces
         # ------------------------------------------------------
@@ -166,7 +163,16 @@ class POMCP:
             return 0
 
         h.data.append(s)
-        actionSet = self.getActionSet(s[7]); 
+        actionSet = self.getActionSet(s[7]);
+
+        # # Loop through all actions to ensure that the same action can't be repeated
+        # for act in actionSet:
+        #     for act2 in self.ActionSet_tm1:
+        #         if act == act2:
+        #             actionSet.remove(act)
+        #             print(act)
+        # self.ActionSet_tm1 = actionSet
+
         #print(h.getChildrenIDs()); 
         if(not h.hasChildren()):
             #for a in range(0,len(self.actionSet)):
@@ -178,12 +184,21 @@ class POMCP:
 
         # find best action acccording to c
         act = np.argmax([ha.Q + self.c*np.sqrt(np.log(h.N)/ha.N) for ha in h])
+        # if actionSet[act] == self.action_tm1:
+        #     actionSet.pop(act)
+
 
         # generate s,o,r
         # sprime = self.generate_s(s,actionSet[act])
         # o = self.generate_o(sprime, actionSet[act])
         # r = self.generate_r(s, actionSet[act])
+        # for item in s:
+            # if np.isnan(item):
+                # print('Found a NaN!',s,item)
         sprime = self.generate_s_time(s,actionSet[act],dist(s,actionSet[act][0].loc)/self.agentSpeed)
+        # if np.isnan(sprime[2]) or np.isnan(sprime[3]):
+            # print('Found a NaN!')
+            # return 0
         o = self.generate_o_time(sprime, actionSet[act])
         r = self.generate_r_time(s, actionSet[act])
 

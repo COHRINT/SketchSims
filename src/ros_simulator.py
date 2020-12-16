@@ -55,7 +55,6 @@ class ROSPOM():
 		state_sub = rospy.Subscriber("/Drone1/pose", PoseStamped, self.state_callback)
 		#self.belief_pub = rospy.Publisher("/image_raw", Image, queue_size=1)
 		self.belief_pub = rospy.Publisher("/belief_map", GMPoints, queue_size=1)
-		self.stopCondition_pub = rospy.Publisher("/stopCon",Int16,queue_size=1); #Publisher for stop condition 
 		obs_sub = rospy.Subscriber("/Obs",String,self.obs_callback); 
 		self.starter = rospy.Publisher("/Start_Con",Int16,queue_size=1); #Publisher for setting drone initial pose
 		self.latestObs = "Null"; 
@@ -65,8 +64,8 @@ class ROSPOM():
 		self.offset_x = 173.7
 		self.offset_y = 845.6
 
-		# self.nextGoal = [0,-145]; 
-		self.nextGoal = [270,-628];
+
+
 
 
 		#Loading yaml file for road network
@@ -83,27 +82,31 @@ class ROSPOM():
 		human_sketch_chance = 1/90; #about once a minute
 		pmean = 3; #poisson mean
 		amult = 3; #area multiplier
-
+		#Target = position on segment road, curs is origin node, goal is goal node
 		target, curs, goals = populatePoints(network, self.solver.sampleCount)
 		pickInd = np.random.randint(0, len(target))
 
 		#Setting drone start state depending on start condition
 		if start_config == 1:
 			start_index = 51
+			self.nextGoal = [0,-145]
+			# [175, 300]
             # start_pose = [175,300]
 		elif start_config == 2:
 			start_index = 43
+			self.nextGoal = [270,-628]
             # start_ind = [445,748]
 		elif start_config == 3:
 			start_index = 28
-            # start_ind = [811,299]
-		# self.starter.publish(start_index)
+			self.nextGoal = [636,-146]
+			# [811, 299]
+
 		trueNode = network[start_index]; #Update this to update the drones belief about its start location
-		# trueNode = network[51]; 
-		# rospy.sleep(3)
 
 		self.solver.buildActionSet(trueNode)
 
+		# Create set of list of beliefs 
+		# Drone loc, Target loc, from node, to node, on/off road, current drone node 
 		self.trueS = [trueNode.loc[0], trueNode.loc[1], target[pickInd][0], target[pickInd][1], curs[pickInd], goals[pickInd], 0, trueNode];
 
 		self.sSet = []
@@ -123,14 +126,6 @@ class ROSPOM():
 		msg = Int16(); 
 		msg.data = 1; 
 		self.action_callback(msg); 
-		
-
-	
-		print("Need to call into the drone client to teleport, and then set current position properly in above lines trueS")
-		print("Should be as simple as changing the network index from 51 to X")
-		print("Also need a ros timer or pyqt timer for stop condition")
-		print("Eliminate nodes from drone action set that are within mountains, in POMCPSolver.py functions getActionSet and buildActionSet")
-
 
 
 	def action_callback(self,msg):
@@ -178,13 +173,13 @@ class ROSPOM():
 	def obs_callback(self,msg):
 		#Function gets called at many times per timestep. Used to update belief and stop condition 
 		now = rospy.Time.now()
-		self.latestObs = msg.data; 
-		elapsed_time = now.to_sec()-self.zero_time.to_sec()
+		self.latestObs = msg.data
+		# elapsed_time = now.to_sec()-self.zero_time.to_sec()
 		# print('Timer',elapsed_time)
-		if elapsed_time>=30 and self.latestObs == 'Captured':
-			self.stopCondition_pub.publish(1); 
+		if self.latestObs == 'Captured':
+			# self.stopCondition_pub.publish(1); 
 			print('Target Captured!!')
-			rospy.signal_shutdown('Target Found')
+			# rospy.signal_shutdown('Target Found')
 
 		#Only update measurement if there has been an observation
 		if(self.latestObs!= 'Null'):	
@@ -289,7 +284,7 @@ class ROSPOM():
 				break; 
 
 
-		print(act,obs); 
+		# print(act,obs); 
 
 		self.sSet = np.array(self.sSet);
 		self.sSet = self.solver.measurementUpdate(self.sSet,act,obs); 
@@ -333,7 +328,12 @@ if __name__ == '__main__':
 
 	#Conditions: Pull, Push, Both
 	condition = "Both"; #Update to change scenario type
-	start_config = 2; #Specify starting configuration of drone. Run with corresponding Unreal file
+	#If an input argument is given.
+	if len(sys.argv)>1:
+		start_config = int(sys.argv[1])
+		# print(sys.argv)
+	else:
+		start_config = 2; #Specify starting configuration of drone. Run with corresponding Unreal file
 
 	planner = ROSPOM(condition,start_config); 
 
