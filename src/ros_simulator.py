@@ -141,12 +141,19 @@ class ROSPOM():
 			act,info = self.solver.search(self.sSet, h, depth=self.solver.maxDepth, maxTime = min(self.curDecTime,self.solver.maxTime),inform=True)
 			self.latestAction = act; 
 			self.solver.buildActionSet(self.trueS[7]);
+			# print('Action Set',self.solver.actionSet)
+			try: # Forbidden nodes probably leads to shorter action set sequences, requiring this try-catch statement
+				if(self.solver.actionSet[act][1][0] is not None):
+					self.lastAct = act; 
+					message =  pull("Is the target {} of {}".format(self.solver.actionSet[act][1][1],self.solver.actionSet[act][1][0].name),self.msg_count)
+					self.question_pub.publish(message);
+					self.msg_count += 1
+			except:
+				print('Solver List Shortened')
+				print('Action Set',self.solver.actionSet)
+				print('Action number',act)
+				act = len(self.solver.actionSet)-1 # Taking the last action in the list
 
-			if(self.solver.actionSet[act][1][0] is not None):
-				self.lastAct = act; 
-				message =  pull("Is the target {} of {}".format(self.solver.actionSet[act][1][1],self.solver.actionSet[act][1][0].name),self.msg_count)
-				self.question_pub.publish(message);
-				self.msg_count += 1
 			self.curDecTime = dist(self.trueS,self.solver.actionSet[act][0].loc)/(self.solver.agentSpeed); 
 			self.totalTime += self.curDecTime;
 
@@ -260,6 +267,7 @@ class ROSPOM():
 
 		ske=Sketch(params); 
 		self.solver.addSketch(self.trueS[7],ske);
+
 
 	def push_callback(self,msg):
 		print("Push Made"); 

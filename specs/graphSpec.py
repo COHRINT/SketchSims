@@ -113,7 +113,7 @@ def generate_s_time(s,a,time):
     agentGoal = a[0].loc; 
     vec = [agentGoal[0]-sprime[0],agentGoal[1]-sprime[1]]; 
     norm = np.sqrt(vec[0]*vec[0] + vec[1]*vec[1]); 
-    if(agentDev != 0):
+    if(agentDev == 0):
         vec[0] *= (agentSpeed*time)/norm 
         vec[1] *= (agentSpeed*time)/norm 
     else:
@@ -139,7 +139,8 @@ def generate_s(s, a):
     #sprime = deepcopy(s);
     sprime = [s[0],s[1],s[2],s[3],s[4],s[5],s[6],s[7]]
     sprime[7] = a[0];
-
+    if np.isnan(sprime[0]) or np.isnan(sprime[1]) or np.isnan(sprime[2]) or np.isnan(sprime[3]): # NAN checking
+        print('Found a NaN in generate_s_START')
     c = sprime[4].loc
     g = sprime[5].loc
     mode = sprime[6]
@@ -207,14 +208,20 @@ def generate_s(s, a):
 
     agentGoal = a[0].loc; 
     vec = [agentGoal[0]-sprime[0],agentGoal[1]-sprime[1]]; 
+    # if np.isnan(vec[0]) or np.isnan(vec[1]):
+        # print('vec created a NAN')
     norm = np.sqrt(vec[0]*vec[0] + vec[1]*vec[1]); 
-    if(agentDev != 0):
+    # if np.isnan(norm):
+        # print('norm created a NAN')
+    if(agentDev == 0):
         vec[0] *= (agentSpeed)/norm 
         vec[1] *= (agentSpeed)/norm 
     else:
         vec[0] *= (agentSpeed+np.random.normal(0,agentDev))/norm 
         vec[1] *= (agentSpeed+np.random.normal(0,agentDev))/norm 
 
+    # if np.isnan(vec[0]) or np.isnan(vec[1]):
+        # print('vec2 created a NAN. ROUND 2')
     #Make sure you don't overshoot, also accounts for slow down time
     vec[0] = min(vec[0],abs(sprime[0]-agentGoal[0]))
     vec[1] = min(vec[1],abs(sprime[1]-agentGoal[1]))
@@ -222,6 +229,8 @@ def generate_s(s, a):
     sprime[0] += vec[0]; 
     sprime[1] += vec[1]; 
 
+    if np.isnan(sprime[0]) or np.isnan(sprime[1]) or np.isnan(sprime[2]) or np.isnan(sprime[3]): # NAN checking
+        print('Found a NaN in generate_s_END')
 
     # sprime[0] = min(1000, max(0, sprime[0]))
     # sprime[1] = min(1000, max(0, sprime[1]))

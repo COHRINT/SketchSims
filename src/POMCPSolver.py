@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 import math
 from shapely.geometry import Polygon, Point
+from random import random
+from random import randint
 sys.path.append("../specs")
 
 
@@ -156,7 +158,7 @@ class POMCP:
 
 
     def simulate(self, s, h, depth):
-
+        """A recursive function used to simulate the possible course of action. Returns the total reward, q, for each branch"""
         # check if node is in tree
         # if not, add nodes for each action
         if(depth <= 0):
@@ -164,14 +166,6 @@ class POMCP:
 
         h.data.append(s)
         actionSet = self.getActionSet(s[7]);
-
-        # # Loop through all actions to ensure that the same action can't be repeated
-        # for act in actionSet:
-        #     for act2 in self.ActionSet_tm1:
-        #         if act == act2:
-        #             actionSet.remove(act)
-        #             print(act)
-        # self.ActionSet_tm1 = actionSet
 
         #print(h.getChildrenIDs()); 
         if(not h.hasChildren()):
@@ -192,12 +186,12 @@ class POMCP:
         # sprime = self.generate_s(s,actionSet[act])
         # o = self.generate_o(sprime, actionSet[act])
         # r = self.generate_r(s, actionSet[act])
-        # for item in s:
-            # if np.isnan(item):
-                # print('Found a NaN!',s,item)
+        if np.isnan(s[0]) or np.isnan(s[1]) or np.isnan(s[2]) or np.isnan(s[3]):
+            # print('Found a NaN PRIOR',s,depth)
+            return 0
         sprime = self.generate_s_time(s,actionSet[act],dist(s,actionSet[act][0].loc)/self.agentSpeed)
-        # if np.isnan(sprime[2]) or np.isnan(sprime[3]):
-            # print('Found a NaN!')
+        if np.isnan(sprime[0]) or np.isnan(sprime[1]) or np.isnan(sprime[2]) or np.isnan(sprime[3]):
+            print('Found a NaN POST. Depth',sprime,depth)
             # return 0
         o = self.generate_o_time(sprime, actionSet[act])
         r = self.generate_r_time(s, actionSet[act])
@@ -243,8 +237,6 @@ class POMCP:
     def search(self, b, h, depth, maxTime, inform=False):
         # Note: You can do more proper analytical updates if you sample during runtime
         # but it's much faster if you pay the sampling price beforehand.
-        # TLDR: You need to change this before actually using
-        #print("Check your sampling before using this in production")
 
         #sSet = b.sample(maxTreeQueries);
         sSet = b
@@ -261,10 +253,17 @@ class POMCP:
             info['Execution Time'] = time.clock()-startTime
             info['Tree Queries'] = count
             #info['Tree Size'] = len(h.traverse());
-            #print([a.Q for a in h])
-            return np.argmax([a.Q for a in h]), info
-            #print([a.Q for a in h])
+            act_list = [a.Q for a in h]
+            #Logic to catch instances where bug leads to all possible actions being the same
+            if sum(act_list) == 0:
+                print('Planning Exception Found. Choosing new action')
+                rint = randint(0,len(act_list))
+                return rint,info
+            else:
+                print('Action Selected',np.argmax([a.Q for a in h]))
+                return np.argmax([a.Q for a in h]), info
         else:
+            print('h variable:',h)
             return np.argmax([a.Q for a in h])
 
     def dynamicsUpdate(self, sSet, act):
@@ -323,6 +322,11 @@ class POMCP:
                 weights[i] = .95; 
             else:
                 weights[i] = 0.05; 
+
+        for i in range(len(weights)):
+            if np.isnan(weights[i]):
+                weights.pop(i)
+                print('Found BAD weights %i'%i)
 
         weights /= np.sum(weights)
 
@@ -428,6 +432,8 @@ class POMCP:
             capture_poly = Polygon(capture_points); 
 
             target = Point(s[2],s[3]); 
+            if np.isnan(s[0]) or np.isnan(s[1]) or np.isnan(s[2]) or np.isnan(s[3]): # NAN checking
+                print('Found a NaN in measurement update',s)
 
             if(detect_poly.contains(target)):
                 #drone_response = "Detect"
@@ -456,7 +462,12 @@ class POMCP:
         #weights = human_weights
         #weights = drone_weights
 
-        weights /= np.sum(weights)
+        for i in range(len(weights)):
+            if np.isnan(weights[i]):
+                weights.pop(i)
+                print('Found BAD weights %i'%i)
+
+        weights /= np.sum(weights)  # Normalize weights
 
         csum = np.cumsum(weights)
         csum[-1] = 1
