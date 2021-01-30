@@ -151,7 +151,7 @@ class ROSPOM():
 			except:
 				print('Solver List Shortened')
 				print('Action Set',self.solver.actionSet)
-				print('Action number',act)
+				print('Action number',act,'List Size',len(self.solver.actionSet))
 				act = len(self.solver.actionSet)-1 # Taking the last action in the list
 
 			self.curDecTime = dist(self.trueS,self.solver.actionSet[act][0].loc)/(self.solver.agentSpeed); 
@@ -192,6 +192,7 @@ class ROSPOM():
 		if(self.latestObs!= 'Null'):	
 			print("Observation Made: {}".format(self.latestObs)); 
 			try: 
+				
 				self.sSet = self.solver.measurementUpdate(self.sSet,self.solver.actionSet[self.latestAction], self.latestObs +  ' Null'); 
 			except Exception as e:
 				print("Belief Update Issue Raised"); 

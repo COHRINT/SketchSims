@@ -138,9 +138,9 @@ def generate_s(s, a):
     
     #sprime = deepcopy(s);
     sprime = [s[0],s[1],s[2],s[3],s[4],s[5],s[6],s[7]]
-    sprime[7] = a[0];
-    if np.isnan(sprime[0]) or np.isnan(sprime[1]) or np.isnan(sprime[2]) or np.isnan(sprime[3]): # NAN checking
-        print('Found a NaN in generate_s_START')
+    sprime[7] = a[0]
+    # if np.isnan(sprime[0]) or np.isnan(sprime[1]) or np.isnan(sprime[2]) or np.isnan(sprime[3]): # NAN checking
+    #     print('Found a NaN in generate_s_START')
     c = sprime[4].loc
     g = sprime[5].loc
     mode = sprime[6]
@@ -205,7 +205,6 @@ def generate_s(s, a):
         sprime[6] = 0
 
 
-
     agentGoal = a[0].loc; 
     vec = [agentGoal[0]-sprime[0],agentGoal[1]-sprime[1]]; 
     # if np.isnan(vec[0]) or np.isnan(vec[1]):
@@ -229,8 +228,8 @@ def generate_s(s, a):
     sprime[0] += vec[0]; 
     sprime[1] += vec[1]; 
 
-    if np.isnan(sprime[0]) or np.isnan(sprime[1]) or np.isnan(sprime[2]) or np.isnan(sprime[3]): # NAN checking
-        print('Found a NaN in generate_s_END')
+    # if np.isnan(sprime[0]) or np.isnan(sprime[1]) or np.isnan(sprime[2]) or np.isnan(sprime[3]): # NAN checking
+        # print('Found a NaN in generate_s_END')
 
     # sprime[0] = min(1000, max(0, sprime[0]))
     # sprime[1] = min(1000, max(0, sprime[1]))
