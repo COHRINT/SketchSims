@@ -35,8 +35,8 @@ class ROSPOM():
 
 		print("Initializing Planner"); 
 		
-		self.sendBelief = False; 
-		self.showBelief = False; 
+		self.sendBelief = False 
+		self.showBelief = False 
 		self.zero_time = rospy.Time() #Setting initial time
 
 		self.goal_pub = rospy.Publisher("Drone1/Goal", path, queue_size=1)
@@ -63,9 +63,6 @@ class ROSPOM():
 
 		self.offset_x = 173.7
 		self.offset_y = 845.6
-
-
-
 
 
 		#Loading yaml file for road network
@@ -106,6 +103,7 @@ class ROSPOM():
 		self.solver.buildActionSet(trueNode)
 
 		# Create set of list of beliefs 
+		# STATE VECTOR DEFINITION  
 		# Drone loc, Target loc, from node, to node, on/off road, current drone node 
 		self.trueS = [trueNode.loc[0], trueNode.loc[1], target[pickInd][0], target[pickInd][1], curs[pickInd], goals[pickInd], 0, trueNode];
 
@@ -123,8 +121,8 @@ class ROSPOM():
 		self.msg_count = 0
 
 		print("Starting Drone Movement")
-		msg = Int16(); 
-		msg.data = 1; 
+		msg = Int16()
+		msg.data = 1 
 		self.action_callback(msg); 
 
 
@@ -140,7 +138,16 @@ class ROSPOM():
 			h = Node()
 			act,info = self.solver.search(self.sSet, h, depth=self.solver.maxDepth, maxTime = min(self.curDecTime,self.solver.maxTime),inform=True)
 			self.latestAction = act; 
-			self.solver.buildActionSet(self.trueS[7]);
+			self.solver.buildActionSet(self.trueS[7])
+			initializing = False
+			for s in self.sSet:
+				if np.isnan(s[0]) or np.isnan(s[0]):
+					s[0] = s[-1].loc[0]
+					s[1] = s[-1].loc[0]
+					initializing = True
+			
+			if initializing:
+				print('Drone State Re-initialized')
 			# print('Action Set',self.solver.actionSet)
 			try: # Forbidden nodes probably leads to shorter action set sequences, requiring this try-catch statement
 				if(self.solver.actionSet[act][1][0] is not None):
@@ -150,7 +157,7 @@ class ROSPOM():
 					self.msg_count += 1
 			except:
 				print('Solver List Shortened')
-				print('Action Set',self.solver.actionSet)
+				# print('Action Set',self.solver.actionSet)
 				print('Action number',act,'List Size',len(self.solver.actionSet))
 				act = len(self.solver.actionSet)-1 # Taking the last action in the list
 
@@ -192,7 +199,7 @@ class ROSPOM():
 		if(self.latestObs!= 'Null'):	
 			print("Observation Made: {}".format(self.latestObs)); 
 			try: 
-				
+
 				self.sSet = self.solver.measurementUpdate(self.sSet,self.solver.actionSet[self.latestAction], self.latestObs +  ' Null'); 
 			except Exception as e:
 				print("Belief Update Issue Raised"); 
@@ -257,14 +264,12 @@ class ROSPOM():
 		cent_x = 0; 
 		cent_y = 0; 
 		for p in msg.points:
-			cent_x += p.x/len(msg.points); 
-			cent_y += p.y/len(msg.points); 
+			cent_x += p.x/len(msg.points) 
+			cent_y += p.y/len(msg.points) 
 
 		params['centroid'] = [cent_x,1000-cent_y]; 
 		params['points'] = points; 
 		params['name'] = msg.name; 
-
-
 
 		ske=Sketch(params); 
 		self.solver.addSketch(self.trueS[7],ske);
@@ -273,8 +278,6 @@ class ROSPOM():
 	def push_callback(self,msg):
 		print("Push Made"); 
 		print(msg); 
-
-
 
 		if(msg.parts[2] == "You"):
 			return; 
@@ -291,7 +294,6 @@ class ROSPOM():
 			if(ske.name == msg.parts[2]):
 				act[1][0] = ske; 
 				break; 
-
 
 		# print(act,obs); 
 
@@ -325,12 +327,6 @@ class ROSPOM():
 		#print("State Updated"); 
 		#print(msg); 
 		pass; 
-
-
-
-
-
-	
 
 
 if __name__ == '__main__':

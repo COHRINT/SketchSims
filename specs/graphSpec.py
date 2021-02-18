@@ -11,6 +11,7 @@ from sketchGen import Sketch
 gamma = .9
 maxTime = .5 #10
 maxDepth = 20
+# c = 10000
 c = 1
 drone_falseNeg = .01
 drone_falsePos = .01
@@ -124,6 +125,10 @@ def generate_s_time(s,a,time):
     vec[0] = min(vec[0],abs(sprime[0]-agentGoal[0]))
     vec[1] = min(vec[1],abs(sprime[1]-agentGoal[1]))
 
+    if np.isnan(vec[0]) or np.isnan(vec[1]):
+        vec[0] = abs(sprime[0]-agentGoal[0])
+        vec[1] = abs(sprime[1]-agentGoal[1])
+
     sprime[0] += vec[0]; 
     sprime[1] += vec[1]; 
 
@@ -224,6 +229,10 @@ def generate_s(s, a):
     #Make sure you don't overshoot, also accounts for slow down time
     vec[0] = min(vec[0],abs(sprime[0]-agentGoal[0]))
     vec[1] = min(vec[1],abs(sprime[1]-agentGoal[1]))
+    if np.isnan(vec[0]) or np.isnan(vec[1]):
+        vec[0] = abs(sprime[0]-agentGoal[0])
+        vec[1] = abs(sprime[1]-agentGoal[1])
+        # print("NAN found in generate S")
 
     sprime[0] += vec[0]; 
     sprime[1] += vec[1]; 
@@ -336,6 +345,7 @@ def generate_o_time(s,a):
     # print('target',target)
     if(detect_poly.contains(target)):
         drone_response = "Detect"
+        print("Actual Detection",a)
         if(capture_poly.contains(target)):
             drone_response = "Captured"
  
@@ -397,6 +407,7 @@ def generate_o(s, a):
 
         if(detect_poly.contains(target)):
             drone_response = "Detect"
+            print("Actual Detection")
             if(capture_poly.contains(target)):
                 drone_response = "Captured"
 
@@ -404,7 +415,7 @@ def generate_o(s, a):
     flip = np.random.random();
     if(flip < drone_falsePos):
         drone_response = "Detect"
-
+        print("False positive")
 
 
     #Second: See what the human said
@@ -428,9 +439,9 @@ def generate_o(s, a):
         human_response = acc_map[human_response]
 
 
-    full_repsonse = drone_response + " " + human_response; 
+    full_response = drone_response + " " + human_response; 
 
-    return full_repsonse;
+    return full_response;
 
 
 def estimate_value(s, h):
