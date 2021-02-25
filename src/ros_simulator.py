@@ -140,14 +140,16 @@ class ROSPOM():
 			self.latestAction = act; 
 			self.solver.buildActionSet(self.trueS[7])
 			initializing = False
+
+			# Catches NAN drone state by resetting with current node location
 			for s in self.sSet:
 				if np.isnan(s[0]) or np.isnan(s[0]):
 					s[0] = s[-1].loc[0]
 					s[1] = s[-1].loc[0]
 					initializing = True
-			
 			if initializing:
 				print('Drone State Re-initialized')
+
 			# print('Action Set',self.solver.actionSet)
 			try: # Forbidden nodes probably leads to shorter action set sequences, requiring this try-catch statement
 				if(self.solver.actionSet[act][1][0] is not None):
@@ -223,7 +225,6 @@ class ROSPOM():
 		# sSetOn = sSetNp[sSetNp[:,6] == 0]; 
 		# plt.scatter(sSetOn[:,2],sSetOn[:,3], color = 'magenta', alpha=0.1, edgecolor='none'); 
 		# plt.scatter(sSetOff[:,2],sSetOff[:,3], color = 'red', alpha = 0.3, edgecolor='none'); 
-
 
 
 		self.sSet = np.array(self.sSet);

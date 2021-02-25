@@ -263,8 +263,9 @@ class POMCP:
                 return rint,info
             else:
                 # arg = np.argmax([a.Q for a in h])
-                print('Values for all actions',print(act_list))
+                # print('Values for all actions',print(act_list))
                 print('Action Selected',np.argmax([a.Q for a in h]))
+                print('MonteCarlo Counter: ',count)
                 return np.argmax([a.Q for a in h]), info
         else:
             print('h variable:',h)
