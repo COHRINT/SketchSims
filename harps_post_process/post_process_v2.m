@@ -10,7 +10,7 @@ sketches drawn, subject response time, number of camera views observed, etc
 
 Authors: Hunter Ray, Trevor Slack
 
-Date Modified: 3/15/2021
+Date Modified: 4/5/2021
 %}
 clear all; close all; clc;
 %% Get directory
@@ -25,8 +25,8 @@ target_topic = '/Target/car';
 drone_topic = '/Drone1/pose';
 time_conversion = 1e-9; % conversion from nanoseconds to seconds
 sketch_offset = [-167;-780];
-sensitivity = 0.4; % probability cuttoff for accuracy
-answer_buffer = 10; %[s] surrounding target location data to evaluate
+sensitivity = 0.5; % probability cuttoff for accuracy
+answer_buffer = 1; %[s] surrounding target location data to evaluate
 %% Read in all .csv files from specified directory
 files = dir(direct+"\*.csv");
 n = length(files);
@@ -71,6 +71,15 @@ for i=1:n
             for j=2:length(target_location)+1
                 target_location(j-1,:) = [cell2mat(bags(i).data(j,10)),cell2mat(bags(i).data(j,11)),cell2mat(bags(i).data(j,12))];
             end
+            for j=1:3
+                idx_nan = find(isnan(target_location(:,j)));
+                target_location(idx_nan,:) = [];
+                target_time(idx_nan) = [];
+            end
+%             tmp1 = target_location(~isnan(target_location(:,1)));
+%             tmp2 = target_location(~isnan(target_location(:,2)));
+%             tmp3 = target_location(~isnan(target_location(:,3)));
+%             target_location = [tmp1,tmp2,tmp3];
             %start_time = target_time(1);
         % isolate condition data and its rosbag time data
         case capture_topic
@@ -181,6 +190,8 @@ if pull || both
             pull_question_direction = 7;
         elseif contains(pull_question_answered(i),'Inside')
             pull_question_direction = 8;
+        elseif contains(pull_question_answered(i),'Near')
+            pull_question_direction = 9;
         end
         for j=1:length(sketch_name)
             if contains(pull_question_answered(i),sketch_name(j))
@@ -197,51 +208,118 @@ if pull || both
         [min_dist,idx_min] = min(dist(:));
         target_during_pull_answer(i,:) = target_location(idx_min,1:2);
         target_near_pull_answer(i,:,:) = target_location(idx_min-answer_buffer:idx_min,1:2);
+        for j=1:length(answer_buffer)
+        end
         pulls(i).Target_Location = target_during_pull_answer(i,:);
     end
     
     % get probabilities (Yes/No is confusing terminology, should be
     % correct/incorrect)
     for i=1:length(pulls)
-        cond_label(i,:) = callSoftMax(sketches(pulls(i).Sketch).Points,target_during_pull_answer(i,:));
-        if cond_label(i,pulls(i).Label+1) >= sensitivity
-            pulls(i).Correct = 'Yes';
-        else
-            pulls(i).Correct = 'No';
-        end
+        tic
+        [cond_label,cond_near] = callSoftMax(sketches(pulls(i).Sketch).Points,target_during_pull_answer(i,:));
+        toc
+        pulls(i).Prob = cond_label;
+        pulls(i).NearProb = cond_near;
+%         if pulls(i).Label < 9
+%             if cond_label(pulls(i).Label+1) >= sensitivity
+%                 if pulls(i).Response == 0
+%                     pulls(i).Correct = 'Correct';
+%                 else
+%                     pulls(i).Correct = 'Incorrect';
+%                 end
+%             else
+%                 if pulls(i).Response == 1
+%                     pulls(i).Correct = 'Correct';
+%                 else
+%                     pulls(i).Correct = 'Incorrect';
+%                 end
+%             end
+%         else
+%             if strcmp(near_label,'Yes')
+%                 if pulls(i).Response == 0
+%                     pulls(i).Correct = 'Correct';
+%                 else
+%                     pulls(i).Correct = 'Incorrect';
+%                 end
+%             else
+%                 if pulls(i).Response == 1
+%                     pulls(i).Correct = 'Correct';
+%                 else
+%                     pulls(i).Correct = 'Incorrect';
+%                 end
+%             end 
+%         end
         % get probability of target location near answer
         for j=1:answer_buffer
-            val = callSoftMax(sketches(pulls(i).Sketch).Points,target_near_pull_answer(i,j,:));
-            if val(pulls(i).Label+1) >= sensitivity
-                corr = 'Yes';
-            else
-                corr = 'No';
-            end
-            ps(j) = surroundingPullCreate(target_near_pull_answer(i,j,:),val,corr);
+            [val,near_prob] = callSoftMax(sketches(pulls(i).Sketch).Points,target_near_pull_answer(i,j,:));
+%             if pulls(i).Label < 9
+%                 if val(pulls(i).Label+1) >= sensitivity
+%                     if pulls(i).Response == 0
+%                         corr = 'Correct';
+%                     else
+%                         corr = 'Incorrect';
+%                     end
+%                 else
+%                     if pulls(i).Response == 1
+%                         corr = 'Correct';
+%                     else
+%                         corr = 'Incorrect';
+%                     end
+%                 end
+%             else
+%                 if strcmp(near,'Yes')
+%                     if pulls(i).Response == 0
+%                         corr = 'Correct';
+%                     else
+%                         corr = 'Incorrect';
+%                     end
+%                 else
+%                     if pulls(i).Response == 1
+%                         corr = 'Correct';
+%                     else
+%                         corr = 'Incorrect';
+%                     end
+%                 end
+%             end
+            ps(j) = surroundingPullCreate(target_near_pull_answer(i,j,:),val,near_prob);
         end
         pulls(i).Surrounding = ps;
         % uncomment this to plot sketches
-%         accuracyPlot(pulls(i),sketches(pulls(i).Sketch))
+        accuracyPlot(pulls(i),sketches(pulls(i).Sketch))
     end
 end
-
+%% Output .mat data file
+% get name of directory
+direct_rev = reverse(direct);
+tmp = extractAfter(direct_rev,'\');
+tmp2 = erase(direct_rev,tmp);
+direct_name = erase(reverse(tmp2),'\');
+% save .mat
+% if pull
+%     save(direct_name,'pulls','sketches','num_views','target_location','drone_location')
+% elseif push
+%     save(direct_name,'pushes','sketches','num_views','target_location','drone_location')
+% else
+%     save(direct_name,'pulls','pushes','sketches','num_views','target_location','drone_location')
+% end
 %% Plotting
-figure(1)
-hold on
-leg_string = sketch_name;
-for i=1:num_sketch
-    pgon = polyshape(s(i).Points(1,:),s(i).Points(2,:));
-    plot(pgon)
-end
-leg_string = [leg_string;'Drone Location';'Target Location'];
-% plot drone and target position
-scatter(drone_location(:,1),drone_location(:,2),'.')
-scatter(target_location(:,1),target_location(:,2),'.')
-legend(leg_string)
-grid on
-xlim([-1000 1000])
-ylim([-1000 1000])
-title("Sketches")
+% figure(1)
+% hold on
+% leg_string = sketch_name;
+% for i=1:num_sketch
+%     pgon = polyshape(s(i).Points(1,:),s(i).Points(2,:));
+%     plot(pgon)
+% end
+% leg_string = [leg_string;'Drone Location';'Target Location'];
+% % plot drone and target position
+% scatter(drone_location(:,1),drone_location(:,2),'.')
+% scatter(target_location(:,1),target_location(:,2),'.')
+% legend(leg_string)
+% grid on
+% xlim([-1000 1000])
+% ylim([-1000 1000])
+% title("Sketches")
 
 
 
@@ -265,29 +343,47 @@ function p = pullCreate(question,asktime,sketch,label,answertime,responsetime,re
     p.Number = number;
 end
 % pull surrounding data
-function ps = surroundingPullCreate(target_loc,prob,correct)
+function ps = surroundingPullCreate(target_loc,prob,near_prob)
     ps.Target_Location = target_loc;
     ps.Prob = prob;
-    ps.Correct = correct;
+    ps.NearProb = near_prob;
+%     ps.Correct = correct;
 end
+% pushes
+% function pu = pushCreate()
 %% Accuracy Plotting
 function accuracyPlot(p,s)
     figure;
     hold on
     grid on
-    leg_string = s.Name;
     pgon = polyshape(s.Points(1,:),s.Points(2,:));
     plot(pgon)
-    scatter(p.Target_Location(1),p.Target_Location(2))
-    leg_string = [leg_string,string(p.Correct)];
-    for i=1:length(p.Surrounding)
-        scatter(p.Surrounding(i).Target_Location(1),p.Surrounding(i).Target_Location(2))
-        leg_string = [leg_string,string(p.Surrounding(i).Correct)];
+    scatter(p.Target_Location(1),p.Target_Location(2),'*')
+%     leg_string = [leg_string,string(p.Correct)];
+%     for i=1:length(p.Surrounding)
+%         scatter(p.Surrounding(i).Target_Location(1),p.Surrounding(i).Target_Location(2))
+% %         leg_string = [leg_string,string(p.Surrounding(i).Correct)];
+%     end
+    legend(s.Name,"Target")
+    if p.Response == 0
+        an = 'Yes';
+    else
+        an = 'No';
     end
-    legend(leg_string)
-    title(p.Question)
+    
+    if p.Label==9
+        prob_str = string(round(p.NearProb,3)*100);
+        textstr = ["","","","","","Inside: "]'+prob_str;
+    else
+        prob_str = string(round(p.Prob,3)*100);
+        textstr = ["East: ","NorthEast: ","North: ","NorthWest: ","West: ","SouthWest: ","South: ","SouthEast: ","Inside: "]+prob_str;
+    end
+    %[X,Y] = centroid(pgon);
+    text(750,-750,textstr)
+    title_str = p.Question + "; Answer: " + an;
+    title(title_str)
+    xlim([-8,1000])
+    ylim([-1000,8])
+    saveas(gcf,string(p.Number)+".png")
 end
-
-
-
 

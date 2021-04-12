@@ -40,14 +40,14 @@ class Sketch:
         # self.name = params['name']
         # self.centroid = params['centroid']
         self.points = points
-        # self.inflated = self.inflatePoints(params)
+        self.inflated = self.inflatePoints(params)
         self.labels = ['East', 'NorthEast', 'North', 'NorthWest',
                        'West', 'SouthWest', 'South', 'SouthEast']
         self.sm = Softmax()
         self.sm.buildPointsModel(self.points, steepness=params['steepness'])
-        # self.sm_inf = Softmax()
-        # self.sm_inf.buildPointsModel(
-        #     self.inflated, steepness=params['steepness'])
+        self.sm_inf = Softmax()
+        self.sm_inf.buildPointsModel(
+            self.inflated, steepness=params['steepness'])
         [self.joint, self.con_class, self.con_label] = self.labelClasses()
 
     def displayClasses(self, show=True):
@@ -155,7 +155,7 @@ class Sketch:
         for i in range(1, len(class_test)):
             class_test[i] = self.sm.pointEvalND(i, point)
 
-        # print(class_test)
+       # print(class_test)
 
         ans = {}
         for l in self.labels:
@@ -164,7 +164,7 @@ class Sketch:
                 te = self.con_label[i]
                 ans[l] += self.con_label[i][l]*class_test[i]
         ans['Inside'] = self.sm.pointEvalND(0,point); 
-
+        #print(self.con_label)
         suma = sum(ans.values())
         for k in ans.keys():
             ans[k] /= suma

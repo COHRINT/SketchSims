@@ -603,6 +603,10 @@ class Softmax:
             for j in range(0, len(self.weights[0])):
                 bottomIn += self.weights[i][j]*point[j]
             bottom += np.exp(bottomIn + self.bias[i])
+        #print(top)
+        #print(bottom)
+        if np.isinf(bottom):
+            bottom = 100000000
         return top/bottom
 
     def plot1D(self, low=0, high=5, res=100, labels=None, vis=True):
