@@ -18,17 +18,22 @@ end
 points_str = append(points_str,' ',string(eval_point(1)),' ',string(eval_point(2)));
 commandStr = append('python3 ',pwd,'\softMaxSketchCall.py',points_str);
 % call script
-[status,cmdout] = system(commandStr)
+[status,cmdout] = system(commandStr);
 % extract values
 % format = "{'East': %d, 'NorthEast': %d, 'North': %d, 'NorthWest': %d, 'West': %d, 'SouthWest': %d, 'South': %d, 'SouthEast': %d, 'Inside': %d}"; 
-if contains(extractBetween(cmdout,'[',']'),'↵')
+%if contains(extractBetween(cmdout,'[',']'),'↵')
+try
     near_prob_str = split(erase(string(cell2mat(extractBetween(cmdout,'[',']'))),'↵'));
     for i=1:6
         near_prob(i) = str2num(near_prob_str(i));
     end
-else
+catch
     near_prob = zeros(6,1);
 end
+
+% else
+%     near_prob = zeros(6,1);
+% end
 cmdout = char(extractBetween(cmdout,"{","}"));
 idxs_sep = strfind(cmdout,',');
 idxs_frnt = strfind(cmdout,':');
