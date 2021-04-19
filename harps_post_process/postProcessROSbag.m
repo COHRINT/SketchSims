@@ -282,11 +282,11 @@ end
 % save .mat only if human subject data
 if subject_case
     if pull && exist('pull_answer_counter','var')
-        save(file_name,'pulls','sketches','num_views','target_location','drone_location','capture_time','subject_survey_data')
+        save(file_name,'pulls','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data')
     elseif push && exist('push_sketch_name','var')
-        save(file_name,'pushes','sketches','num_views','target_location','drone_location','capture_time','subject_survey_data')
+        save(file_name,'pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data')
     elseif exist('pull_answer_counter','var') && exist('push_sketch_name','var')
-        save(file_name,'pulls','pushes','sketches','num_views','target_location','drone_location','capture_time','subject_survey_data')
+        save(file_name,'pulls','pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data')
     end
 end
 end
