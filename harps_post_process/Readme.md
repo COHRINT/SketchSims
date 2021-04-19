@@ -17,7 +17,7 @@ Clone repository. Requires Matlab.
 	sketchGen.py
 	gaussianMixtures.py
 	/Subject(#)_(Type (Push, Pull, Both))
-		_slash_
+		_slash_(Topic Name).csv
 	/Subject(#)_(Type)
 	...
 ```
