@@ -49,7 +49,9 @@ if contains(data_dir.name,'Subject')
     subject_case = true;
     subject_number = double(string(extractBetween(data_dir.name,'Subject','_')));
     questionnaire = readtable("Post-Simulation Questionnaire.csv");
+    background = readtable("Subject Background Questionnaire.csv");
     subject_data_idx = find(questionnaire.SubjectID==subject_number);
+    subject_data_idx_back = find(background.WhatIsYourSubjectID_==subject_number);
     for i=1:length(subject_data_idx)
         if contains(questionnaire.Task{subject_data_idx(i)},'Pull')
             if contains(questionnaire.Task{subject_data_idx(i)},'Push')
@@ -70,6 +72,7 @@ if contains(data_dir.name,'Subject')
     else
         idx_survey_response = find(subject_data_idx_type==2);
     end
+    subject_background = background(subject_data_idx_back,:);
     subject_survey_data = questionnaire(subject_data_idx(idx_survey_response),:);
 end
 questionnaire = readtable("Post-Simulation Questionnaire.csv");
@@ -206,20 +209,25 @@ if pull && exist('pull_answer_counter','var')
     
     % target location during question answer
     target_during_pull_answer = zeros(length(pull_answer_time),2);
+    drone_during_pull_answer = zeros(length(pull_answer_time),2);
     for i=1:length(pull_answer_time)
         dist = abs(target_time-pull_answer_time(i));
         [min_dist,idx_min] = min(dist(:));
         target_during_pull_answer(i,:) = target_location(idx_min,1:2);
+        drone_during_pull_answer(i,:) = drone_location(idx_min,1:2);
 %         target_near_pull_answer(i,:,:) = target_location(idx_min-answer_buffer:idx_min,1:2);
 %         for j=1:length(answer_buffer)
 %         end
         pulls(i).Target_Location = target_during_pull_answer(i,:);
     end
     
-    % get probabilities (Yes/No is confusing terminology, should be
-    % correct/incorrect)
+    % get probabilities 
     for i=1:length(pulls)
-        [cond_label,cond_near] = callSoftMax(sketches(pulls(i).Sketch).Points,target_during_pull_answer(i,:));
+        if strcmp(sketches(pulls(i).Sketch).Name,'you')
+            [cond_label,cond_near]=youSketchEval(drone_during_pull_answer(i,:),target_during_pull_answer(i,:));
+        else
+            [cond_label,cond_near] = callSoftMax(sketches(pulls(i).Sketch).Points,target_during_pull_answer(i,:));
+        end
         pulls(i).Prob = cond_label;
         pulls(i).NearProb = cond_near;
         % get probability of target location near answer
@@ -246,10 +254,12 @@ if push && exist('push_sketch_name','var')
     end
     
     target_during_push_answer = zeros(length(push_time),2);
+    drone_during_pull_answer = zeros(length(push_time),2);
     for i=1:length(push_time)
         dist = abs(target_time-push_time(i));
         [min_dist,idx_min] = min(dist(:));
         target_during_push_answer(i,:) = target_location(idx_min,1:2);
+        drone_during_pull_answer(i,:) = drone_location(idx_min,1:2);
 %         target_near_push_answer(i,:,:) = target_location(idx_min-answer_buffer:idx_min,1:2);
 %         for j=1:length(answer_buffer)
 %         end
@@ -257,7 +267,11 @@ if push && exist('push_sketch_name','var')
     end
     
     for i=1:length(pushes)
-        [cond_label,cond_near] = callSoftMax(sketches(pushes(i).Sketch).Points,target_during_push_answer(i,:));
+        if strcmp(sketches(pushes(i).Sketch).Name,'you')
+            [cond_label,cond_near]=youSketchEval(drone_during_pull_answer(i,:),target_during_pull_answer(i,:));
+        else
+            [cond_label,cond_near] = callSoftMax(sketches(pushes(i).Sketch).Points,target_during_push_answer(i,:));
+        end
         pushes(i).Prob = cond_label;
         pushes(i).NearProb = cond_near;
         % get probability of target location near answer
@@ -282,11 +296,11 @@ end
 % save .mat only if human subject data
 if subject_case
     if pull && exist('pull_answer_counter','var')
-        save(file_name,'pulls','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data')
+        save(file_name,'pulls','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background')
     elseif push && exist('push_sketch_name','var')
-        save(file_name,'pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data')
+        save(file_name,'pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background')
     elseif exist('pull_answer_counter','var') && exist('push_sketch_name','var')
-        save(file_name,'pulls','pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data')
+        save(file_name,'pulls','pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background')
     end
 end
 end
