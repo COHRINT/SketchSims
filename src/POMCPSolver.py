@@ -9,12 +9,14 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 import math
 from shapely.geometry import Polygon, Point
+from random import random
+from random import randint
 sys.path.append("../specs")
 
 
 class POMCP:
 
-    def __init__(self, specFile):
+    def __init__(self, specFile, pullAllowed=True):
         mod = importlib.import_module(specFile)
         self.generate_s = mod.generate_s
         self.generate_o = mod.generate_o
@@ -52,7 +54,11 @@ class POMCP:
         self.assumed_accuracy = mod.assumed_accuracy
         self.assumed_availability = mod.assumed_availability
 
-        #self.buildActionSet(); 
+        self.pullAllowed = pullAllowed;  
+        self.forbidden = [39,40,41,42,47,46,44,34,48,43,35,33,35]
+
+        # Variables used to ensure drone can't go back to the same location
+        self.node_history = []
 
 
     def getActionSet(self,s):
@@ -60,69 +66,81 @@ class POMCP:
 
         nodeSet = []; 
 
-
         for n in s.neighbors:
-            if(n not in nodeSet):
-                nodeSet.append(n); 
-            for n2 in n.neighbors:
-                if(n2 not in nodeSet and n2 is not s):
-                    if(s.loc[0] == n.loc[0] and n.loc[0] == n2.loc[0]):
-                        continue; 
-                    elif(s.loc[1] == n.loc[1] and n.loc[1] == n2.loc[1]):
-                        continue; 
-                    nodeSet.append(n2);
-
+            if(n not in nodeSet and n.ident not in self.node_history):
+                nodeSet.append(n)
+            if (n.ident not in self.forbidden):
+                for n2 in n.neighbors:
+                    if(n2 not in nodeSet and n2 is not s):
+                        if(s.loc[0] == n.loc[0] and n.loc[0] == n2.loc[0]):
+                            continue 
+                        elif(s.loc[1] == n.loc[1] and n.loc[1] == n2.loc[1]):
+                            continue 
+                        elif(n2.ident in self.forbidden):
+                            continue 
+                        elif(n2.ident in self.node_history):
+                            continue
+                        nodeSet.append(n2);
+        # print('Calling getActionSet')
 
         # For conjoined action spaces
         # ------------------------------------------------------
         for i in range(0,len(nodeSet)):
             actionSet.append([nodeSet[i],[None,None]]); 
-
-            for ske in self.sketchSet:
-                #inside
-                actionSet.append([nodeSet[i],[ske,'Inside']])
-                #near
-                actionSet.append([nodeSet[i],[ske,'Near']])
-                for lab in ske.labels:
-                    actionSet.append([nodeSet[i],[ske,lab]]); 
-                    #actionSet.append([nodeSet[i],[ske,"Near " + lab]]); 
+            if(self.pullAllowed):
+                for ske in self.sketchSet:
+                    #inside
+                    actionSet.append([nodeSet[i],[ske,'Inside']])
+                    #near
+                    actionSet.append([nodeSet[i],[ske,'Near']])
+                    for lab in ske.labels:
+                        actionSet.append([nodeSet[i],[ske,lab]]); 
+                        #actionSet.append([nodeSet[i],[ske,"Near " + lab]]); 
 
         return actionSet; 
 
 
     def buildActionSet(self,s):
         self.actionSet = []; 
-
+        # print(s.ident)
         nodeSet = []; 
-
-
         for n in s.neighbors:
-            if(n not in nodeSet):
+            if(n not in nodeSet and n.ident not in self.node_history):
                 nodeSet.append(n); 
-            for n2 in n.neighbors:
-                if(n2 not in nodeSet and n2 is not s):
-                    if(s.loc[0] == n.loc[0] and n.loc[0] == n2.loc[0]):
-                        continue; 
-                    elif(s.loc[1] == n.loc[1] and n.loc[1] == n2.loc[1]):
-                        continue; 
-                    nodeSet.append(n2);
+            if (n.ident not in self.forbidden):
+                for n2 in n.neighbors:
+                    if(n2 not in nodeSet and n2 is not s):
+                        if(s.loc[0] == n.loc[0] and n.loc[0] == n2.loc[0]):
+                            continue; 
+                        elif(s.loc[1] == n.loc[1] and n.loc[1] == n2.loc[1]):
+                            continue; 
+                        elif(n2.ident in self.node_history):
+                            continue
+                        # elif(n2.ident in self.forbidden):
+                            # continue; 
+                        nodeSet.append(n2);
 
-
-
+        # print('Calling buildActionSet')
 
         # For conjoined action spaces
         # ------------------------------------------------------
         for i in range(0,len(nodeSet)):
             self.actionSet.append([nodeSet[i],[None,None]]); 
+            if(self.pullAllowed):
+                for ske in self.sketchSet:
+                    #inside
+                    self.actionSet.append([nodeSet[i],[ske,'Inside']])
+                    #near
+                    self.actionSet.append([nodeSet[i],[ske,'Near']])
+                    for lab in ske.labels:
+                        self.actionSet.append([nodeSet[i],[ske,lab]]); 
+                        #self.actionSet.append([nodeSet[i],[ske,"Near " + lab]]); 
 
-            for ske in self.sketchSet:
-                #inside
-                self.actionSet.append([nodeSet[i],[ske,'Inside']])
-                #near
-                self.actionSet.append([nodeSet[i],[ske,'Near']])
-                for lab in ske.labels:
-                    self.actionSet.append([nodeSet[i],[ske,lab]]); 
-                    #self.actionSet.append([nodeSet[i],[ske,"Near " + lab]]); 
+        # Modify node history list to keep track of last three nodes
+        if len(self.node_history)==3:
+            print("Node History",self.node_history)
+            self.node_history.pop(0)
+        # self.node_history.append(s.ident)
 
         # For separated action spaces
         # ------------------------------------------------------
@@ -147,31 +165,29 @@ class POMCP:
 
 
     def simulate(self, s, h, depth):
-
+        """A recursive function used to simulate the possible course of action. Returns the total reward, q, for each branch"""
         # check if node is in tree
         # if not, add nodes for each action
         if(depth <= 0):
             return 0
 
         h.data.append(s)
-        actionSet = self.getActionSet(s[7]); 
-        #print(h.getChildrenIDs()); 
+        actionSet = self.getActionSet(s[7]);
+
+        #print(h.getChildrenIDs());
+        #Expand tree search 
         if(not h.hasChildren()):
-            #for a in range(0,len(self.actionSet)):
-                # self.addActionNode(h,a);
-            #actionSet = self.getActionSet(s[7])
             for a in range(0,len(actionSet)):
                 h.addChildID(a)
         #print(actionSet);
 
         # find best action acccording to c
         act = np.argmax([ha.Q + self.c*np.sqrt(np.log(h.N)/ha.N) for ha in h])
-
-        # generate s,o,r
-        # sprime = self.generate_s(s,actionSet[act])
-        # o = self.generate_o(sprime, actionSet[act])
-        # r = self.generate_r(s, actionSet[act])
+        # if actionSet[act] == self.action_tm1:
+        #     actionSet.pop(act)
+        #Determine next state given an action
         sprime = self.generate_s_time(s,actionSet[act],dist(s,actionSet[act][0].loc)/self.agentSpeed)
+
         o = self.generate_o_time(sprime, actionSet[act])
         r = self.generate_r_time(s, actionSet[act])
 
@@ -193,6 +209,10 @@ class POMCP:
         h.N += 1
         h[act].N += 1
         h[act].Q += (q-h[act].Q)/h[act].N
+
+        if q == 0:
+            print('Zero action value', actionSet[act])
+
 
         return q
 
@@ -216,8 +236,6 @@ class POMCP:
     def search(self, b, h, depth, maxTime, inform=False):
         # Note: You can do more proper analytical updates if you sample during runtime
         # but it's much faster if you pay the sampling price beforehand.
-        # TLDR: You need to change this before actually using
-        #print("Check your sampling before using this in production")
 
         #sSet = b.sample(maxTreeQueries);
         sSet = b
@@ -233,11 +251,21 @@ class POMCP:
             info = {"Execution Time": 0, "Tree Queries": 0, "Tree Size": 0}
             info['Execution Time'] = time.clock()-startTime
             info['Tree Queries'] = count
-            #info['Tree Size'] = len(h.traverse());
-            #print([a.Q for a in h])
-            return np.argmax([a.Q for a in h]), info
-            #print([a.Q for a in h])
+            # print("Traverse Length",len(h.traverse()))
+            act_list = [a.Q for a in h]
+            #Logic to catch instances where bug leads to all possible actions being the same
+            if sum(act_list) == 0:
+                print('Planning Exception Found. Choosing new action',info)
+                rint = randint(0,len(act_list))
+                return rint,info
+            else:
+                # arg = np.argmax([a.Q for a in h])
+                # print('Values for all actions',print(act_list))
+                print('Action Selected',np.argmax([a.Q for a in h]))
+                print('MonteCarlo Counter: ',count)
+                return np.argmax([a.Q for a in h]), info
         else:
+            print('h variable:',h)
             return np.argmax([a.Q for a in h])
 
     def dynamicsUpdate(self, sSet, act):
@@ -256,8 +284,14 @@ class POMCP:
         weights = np.zeros(shape=(len(sSet))); 
         [drone_o,human_o] = o.split();
 
+
+
         for i in range(0,len(sSet)):
-            s = sSet[i]; 
+            s = sSet[i]
+            # if np.isnan(s[0]) or np.isnan(s[1]) or np.isnan(s[2]) or np.isnan(s[3]): # NAN checking
+            #     # print('Found a NaN in measurement update',s)
+            #     weights[i] = 0
+            #     continue
             theta = computeTheta([s[0],s[1]],act[0].loc);
             #make a rectangle representing the total distance swept
             capture_points = []; 
@@ -273,8 +307,8 @@ class POMCP:
             detect_points.append([s[0]+detect_length*np.cos(theta+90)/2, s[1]+detect_length*np.sin(theta+90)/2]);
             detect_points.append([act[0].loc[0]+detect_length*np.cos(theta-90)/2, act[0].loc[1]+detect_length*np.sin(theta-90)/2])
             detect_points.append([act[0].loc[0]+detect_length*np.cos(theta+90)/2, act[0].loc[1]+detect_length*np.sin(theta+90)/2])
+            #print(detect_points); 
             detect_poly  = Polygon(detect_points); 
-
 
             capture_poly = Polygon(capture_points);
             target = Point(s[2],s[3]); 
@@ -293,6 +327,11 @@ class POMCP:
                 weights[i] = .95; 
             else:
                 weights[i] = 0.05; 
+
+        for i in range(len(weights)):
+            if np.isnan(weights[i]):
+                weights.pop(i)
+                print('Found BAD weights %i'%i)
 
         weights /= np.sum(weights)
 
@@ -321,23 +360,10 @@ class POMCP:
         weights = np.zeros(shape=(len(sSet))); 
 
 
-        # upWeight = .99
-        # downWeight = .01
-        # for i in range(0, len(s)):
-        #     if(distance([s[i][0], s[i][1]], [s[i][2], s[i][3]]) < 1):
-        #         if(o == 'Near'):
-        #             weights[i] = upWeight
-        #         else:
-        #             weights[i] = downWeight
-        #     elif(distance([s[i][0], s[i][1]], [s[i][2], s[i][3]]) >= 1):
-        #         if(o == 'Far'):
-        #             weights[i] = upWeight
-        #         else:
-        #             weights[i] = downWeight
-        #print("Fix the near weighting")
-        #acc = 0.97;
         acc = self.human_accuracy 
         [drone_o,human_o] = o.split(); 
+
+        #Update human weighting
         if(act[1][0] is not None and human_o is not 'Null'):
             ske = act[1][0]; 
             label = act[1][1]; 
@@ -379,12 +405,11 @@ class POMCP:
                 if(human_o == 'No'):
                     human_weights[i] = 1-human_weights[i]; 
 
-
-                    
-
+        #Update drone weights
         for i in range(0,len(sSet)):
-            s = sSet[i]; 
-            #theta = np.arctan2(act[0].loc[1],act[0].loc[0])-np.arctan2(s[1],s[0])
+            s = sSet[i]
+            # if np.isnan(s[0]) or np.isnan(s[1]) or np.isnan(s[2]) or np.isnan(s[3]): # NAN checking
+                # print('Found a NaN in measurement update START',s)
             theta = computeTheta([s[0],s[1]],act[0].loc); 
             detect_length = self.detect_length
             detect_points = [[s[0], s[1]], [s[0]+detect_length*math.cos(2*-0.261799+math.radians(theta)), s[1]+detect_length*math.sin(2*-0.261799+math.radians(
@@ -426,7 +451,13 @@ class POMCP:
         #weights = human_weights
         #weights = drone_weights
 
-        weights /= np.sum(weights)
+        #Checks to see if any of the calculated weights are corrupted
+        for i in range(len(weights)):
+            if np.isnan(weights[i]):
+                weights.pop(i)
+                print('Found BAD weights %i'%i)
+
+        weights /= np.sum(weights)  # Normalize weights
 
         csum = np.cumsum(weights)
         csum[-1] = 1
@@ -467,8 +498,6 @@ def testPOMCP():
     #          [0], target[pickInd][1], curs[pickInd], goals[pickInd], 0]
     trueS = [500, 500, target[pickInd][0], target[pickInd][1], curs[pickInd], goals[pickInd], 0];
     print(trueS[2:4]); 
-
-
 
     sSet = []
     for i in range(0, len(target)):

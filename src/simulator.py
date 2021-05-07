@@ -53,9 +53,9 @@ def simulate(verbosity = 0):
 
     # DEBUG: Add initial sketch
     # ------------------------------------------------------
-    # params = {'centroid': [500, 500], 'dist_nom': 50,'angle_noise': .3,'dist_noise': .25, 'pois_mean': 4, 'area_multiplier': 5, 'name': "Test", 'steepness': 20}
-    # ske = Sketch(params)
-    # solver.addSketch(trueS[7],ske);
+    params = {'centroid': [500, 500], 'dist_nom': 50,'angle_noise': .3,'dist_noise': .25, 'pois_mean': 4, 'area_multiplier': 5, 'name': "Test", 'steepness': 20,'points': None}
+    ske = Sketch(params)
+    solver.addSketch(trueS[7],ske);
 
 
     # Set up sketches
@@ -74,6 +74,7 @@ def simulate(verbosity = 0):
         params['dist_nom'] = v['radius']
         params['centroid'] = v['loc']
         params['dist_noise'] = v['radius']/4
+        params['points'] = None
         allSketches.append(Sketch(params))
         #seedCount += 1
     np.random.shuffle(allSketches); 
@@ -129,6 +130,7 @@ def simulate(verbosity = 0):
     step = 0; 
     curDecTime = 5; 
     decCounts = 0; 
+    sketchesMade = []
     # Simulate until captured or out of time
     # ------------------------------------------------------
     #for step in range(0, maxSteps):
@@ -169,7 +171,8 @@ def simulate(verbosity = 0):
 
             #Disable To Blind Plan
             ########################################################
-            if(solver.actionSet[act][1][0] is not None):
+            if(solver.actionSet[act][1][0] is not None): #If a question is asked regarding a sketch
+                # print(solver.actionSet[act],solver.actionSet[act][1],solver.actionSet[act][1][0])
                 o = solver.generate_o(trueS,solver.actionSet[act]);
                 if(verbosity > 1):
                     [o1,o2] = o.split(); 
@@ -182,9 +185,6 @@ def simulate(verbosity = 0):
                 newSet = solver.resampleSet(newSet); 
                 sSet = newSet; 
 
-
-
-             
 
             curDecTime = dist(trueS,solver.actionSet[act][0].loc)/solver.agentSpeed; 
             totalTime += curDecTime; 
@@ -283,12 +283,20 @@ def simulate(verbosity = 0):
             x,y = capture_poly.exterior.xy
             ax.plot(x,y,color='gold');
 
-            #plt.axis('equal')
+
+
+            #Show Sketches
+            for s in range(0,len(sketchesMade)):
+                sketch_Poly = Polygon(sketchesMade[s].points)
+
+                x,y = sketch_Poly.exterior.xy
+                ax.plot(x,y,color = 'green')
+
+                        #plt.axis('equal')
             ax.set_xlim([0,1000]); 
             ax.set_ylim([0,1000]); 
 
             plt.pause(0.1); 
-
 
         # check if human volunteered anything
         # ------------------------------------------------------
@@ -304,6 +312,7 @@ def simulate(verbosity = 0):
                 sketchTimes.pop(0); 
                 #print("Sketch Made: {}".format(ske.name)); 
                 ske = sketchQueue.pop(); 
+                sketchesMade.append(ske)
                 solver.addSketch(trueS[7],ske);
                 if(verbosity > 1):
                     print("Sketch Made: {}".format(ske.name)); 
@@ -376,11 +385,11 @@ def runSims(numRuns,tag):
 if __name__ == '__main__':
 
 
-    #simulate(verbosity=2)
-    ar = sys.argv; 
-    if(len(ar)>1):
-        runSims(int(ar[1]),ar[2]); 
-    else:
-        runSims(2,'Test'); 
+    simulate(verbosity=2)
+    # ar = sys.argv; 
+    # if(len(ar)>1):
+    #     runSims(int(ar[1]),ar[2]); 
+    # else:
+    #     runSims(2,'Test'); 
 
 
