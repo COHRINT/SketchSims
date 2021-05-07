@@ -12,8 +12,8 @@ gamma = .9
 maxTime = 5#.5 #10
 maxDepth = 22
 # c = 10000
-c = 50
- # c =1
+# c = 50
+c =1
 drone_falseNeg = .01
 drone_falsePos = .01
 
@@ -232,7 +232,7 @@ def generate_s(s, a):
     vec[0] = min(vec[0],abs(sprime[0]-agentGoal[0]))
     vec[1] = min(vec[1],abs(sprime[1]-agentGoal[1]))
     if np.isnan(vec[0]) or np.isnan(vec[1]):
-        print('Fixed NAN_no_time')
+        # print('Fixed NAN_no_time')
         vec[0] = abs(sprime[0]-agentGoal[0])
         vec[1] = abs(sprime[1]-agentGoal[1])
         # print("NAN found in generate S")

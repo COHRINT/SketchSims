@@ -191,9 +191,6 @@ class POMCP:
         o = self.generate_o_time(sprime, actionSet[act])
         r = self.generate_r_time(s, actionSet[act])
 
-        # if r==-2:
-            # print('Terminal Question?',self.isTerminal(s,actionSet[act]))
-            # print('Sprime',sprime)
         # if o not in ha.children
         # add it and estimate value
         # else recurse

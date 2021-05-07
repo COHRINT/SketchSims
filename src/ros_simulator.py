@@ -147,7 +147,7 @@ class ROSPOM():
 					s[0] = s[-1].loc[0]
 					s[1] = s[-1].loc[0]
 					initializing = True
-			if initializing:
+			if initializing: #print statement to show that a NaN was caught and reinitialized
 				print('Drone State Re-initialized')
 
 			# print('Action Set',self.solver.actionSet)
