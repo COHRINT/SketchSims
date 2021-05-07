@@ -2,6 +2,10 @@ import numpy as np;
 import scipy.stats as stats
 import matplotlib.pyplot as plt; 
 
+import matplotlib.image as mpimg
+import matplotlib.animation as animation
+
+
 #a = np.load('../data/simHARPS_Test.npy').item(); 
 
 #print(a['tag'])
@@ -620,27 +624,27 @@ def humanDataExtract():
     for po in mults:
         print("Plan: {}".format(po)); 
         allCatchTimes = []; 
-        for i in range(0,100):
+        for i in range(0,250):
             #print(i); 
             data = np.load('../data/{}/{}_{}.npy'.format(po,po,i), allow_pickle=True).item(); 
             if(data['Captured'] == True):
                 allCatchTimes.append(data['TotalTime']); 
             del data
         allDat.append(allCatchTimes); 
-    np.save('../data/human_nonhuman_small.npy',allDat);
+    np.save('../data/human_nonhuman_large.npy',allDat);
 
 
-def humanDataCheck():
+def humanDataCheck(show=False):
 
     plt.figure(); 
-    data = np.load('../data/human_nonhuman_small.npy',allow_pickle=True)
+    data = np.load('../data/human_nonhuman_large.npy',allow_pickle=True)
     allAves = []; 
     allSD = []; 
     allRatio = [];  
     for d in data:
         allAves.append(np.mean(d)); 
         allSD.append(np.std(d)); 
-        allRatio.append(len(d)/100); 
+        allRatio.append(len(d)/250); 
 
     #x = [1.5,2,3,4,5,10];
     #x = [15,30,60,120,240];  
@@ -658,31 +662,557 @@ def humanDataCheck():
     
 
 
-    test = stats.binom_test(allRatio[0]*100,n=100,p=allRatio[1]); 
+    test = stats.binom_test(allRatio[0]*250,n=250,p=allRatio[1]); 
 
     #print("Binomial Significance of Human Involvement: {}".format(test));
     if(test < 0.001):
         test = 'p<0.001'; 
     plt.title("Significance of Human Involvement: {}".format(test)); 
-    plt.savefig('../figs/human_sig.png'); 
+    if(show):
+        plt.show()
+    else:
+        plt.savefig('../figs/human_sig.png'); 
+
+
+def predictiveStateObsExtract():
+    allDat = []; 
+
+    mults = ['human_blindPlan','human_treePlan']
+
+
+
+    for po in mults:
+        print("Plan: {}".format(po)); 
+        allStateObs = []; 
+        for i in range(0,100):
+            #print(i); 
+            data = np.load('../data/{}/{}_{}.npy'.format(po,po,i), allow_pickle=True).item(); 
+            # if(data['Captured'] == True):
+            #     allCatchTimes.append(data['TotalTime']); 
+            # del data
+            allStateObs.append({'States':data['States'],'Obs':data['Drone_Obs'], 'Times':data['DecisionTimes'],"Captured":data['Captured']}); 
+        allDat.append(allStateObs); 
+    np.save('../data/planningType_stateObs.npy',allDat); 
+
+def predictiveSlipAways(show=False):
+    #plt.figure(); 
+    data = np.load('../data/planningType_stateObs.npy',allow_pickle=True)
+
+
+
+    allCapDiffs= [[],[]] 
+    perCap = [0,0]; 
+    for i in range(0,len(data)):
+        for j in range(0,len(data[i])):
+            flag = False
+            if(data[i][j]['Captured']):
+                perCap[i] += .01; 
+            for k in range(0,min(599,len(data[i][j]['Obs'])-5)):
+                if(data[i][j]['Obs'][k] == 'Detect'):
+                    if(data[i][j]['Captured'] and len(data[i][j]['Obs'])-k < 600):
+                        dur =  min(599,len(data[i][j]['Obs'])-k); 
+                        #capTimes[i,dur] += 1; 
+                        allCapDiffs[i].append(dur)
+                        flag = True; 
+
+                # if(flag):
+                #     break; 
+                    # elif(data[i][j]['Times'][-1] >= 600):
+                    #     capTimes[i,600] += 1; 
+
+                    # if(len(data[i][j]['Obs'])-k < 600):
+                    #     dur =  len(data[i][j]['Obs'])-k; 
+                    #     capTimes[i,dur] += 1; 
+
+    #plt.hist(allCapDiffs[0],color='red',alpha=0.3,bins=15,density=True); 
+    #plt.hist(allCapDiffs[1],color='blue',alpha=0.3,bins=15,density=True); 
+
+    fig,ax1 = plt.subplots(); 
+    ax2 = ax1.twinx(); 
+
+
+    heights,edges = np.histogram(allCapDiffs[0], bins=15)
+    binCenters = (edges[:-1] + edges[1:])/2
+
+    # norm the heights
+    heights = heights/heights.sum()
+    cdf = heights.cumsum()
+    
+
+    ax1.plot(binCenters, cdf, color='red',label='Blind CDF')
+    ax2.bar(binCenters, heights, color='red',alpha=0.3, width=38, label='Blind Pursuit Time')
+
+    heights,edges = np.histogram(allCapDiffs[1], bins=15)
+    binCenters = (edges[:-1] + edges[1:])/2
+
+    # norm the heights
+    heights = heights/heights.sum()
+    cdf = heights.cumsum()
+
+
+    ax1.plot(binCenters, cdf, color='blue', label = 'Predictive CDF')
+    ax2.bar(binCenters, heights, color='blue',alpha=0.3, width = 38, label='Predictive Pursuit Time')
+    ax1.legend(loc='upper right'); 
+    ax2.legend(loc='upper left'); 
+    ax2.set_ylim([0,.30]); 
+    ax1.set_ylim([0,1.2]);
+    ax1.axhline(1,linestyle='--',color='black');  
+    ax1.set_ylabel("Cummulative Percentiles")
+    ax2.set_ylabel("Histogram Percentiles")
+    ax1.set_xlabel("Pursuit Time (s): Capture - Detection")
+    plt.title("Pursuit Times of Blind and Predictive Planning")
+    if(show):
+        plt.show(); 
+    else:
+        plt.savefig('../figs/predictive_pursuit.png'); 
+
+def accQuestionsExtract():
+    mults = {}; 
+    labs = ['3','5','7','9','95']; 
+    for l in labs:
+        allActions = []; 
+        for i in range(0,50):
+            #data = np.load('../data/acc_p{}_p{}/acc_p{}_p{}_{}.npy'.format(l,l2,l,l2,i), allow_pickle=True).item(); 
+            data = np.load('../data/acc_p{}_p{}/acc_p{}_p{}_{}.npy'.format(l,l,l,l,i), allow_pickle=True).item(); 
+        
+            allActions.append(data['Actions']); 
+
+ 
+        mults[l] = allActions; 
+    np.save('../data/acc_matched_quests.npy',mults); 
+
+def availQuestionsExtract():
+    mults = {}; 
+    labs = ['3','5','7','9','95']; 
+    for l in labs:
+        allActions = []; 
+        for i in range(0,50):
+            #data = np.load('../data/acc_p{}_p{}/acc_p{}_p{}_{}.npy'.format(l,l2,l,l2,i), allow_pickle=True).item(); 
+            data = np.load('../data/avail_p{}_p{}/avail_p{}_p{}_{}.npy'.format(l,l,l,l,i), allow_pickle=True).item(); 
+        
+            allActions.append(data['Actions']); 
+
+ 
+        mults[l] = allActions; 
+    np.save('../data/avail_matched_quests.npy',mults); 
+
+
+def accQuestionsCheck(show=False):
+    data = np.load('../data/acc_matched_quests.npy',allow_pickle=True).item();  
+    plt.figure(); 
+
+    keySet = ['3','5','7','9','95']
+
+    #for ac in keySet:
+
+    numQuests = {}; 
+    numActs = {}; 
+
+    numInside = {}; 
+    numNear = {}; 
+    for ac in keySet:
+        total = 0; 
+        totalActs = 0; 
+        totalNear = 0; 
+        totalInside = 0; 
+        for run in data[ac]:
+            for act in run:
+                if(act[1][0] is not None):
+                    if(act[1][1] == 'Near'):
+                        totalNear += 1; 
+                    elif(act[1][1] == 'Inside'):
+                        totalInside += 1; 
+                    total += 1; 
+                totalActs += 1; 
+        numQuests[ac] = total; 
+        numActs[ac] = totalActs; 
+        numInside[ac] = totalInside; 
+        numNear[ac] = totalNear
+
+    for ac in keySet:
+        print("Accuracy: {}, Percent Questions: {}".format(ac,numQuests[ac]/numActs[ac])); 
+        #print("Accuracy: {}, Per Near: {}, Per Inside: {}".format(ac,numNear[ac]/numQuests[ac], numInside[ac]/numQuests[ac])); 
+       # print("Accuracy: {}, Per Close: {}".format(ac,numNear[ac]/numQuests[ac]+ numInside[ac]/numQuests[ac])); 
+
+    allQuestRatios = []; 
+    for ac in keySet:
+        allQuestRatios.append(numQuests[ac]/numActs[ac]); 
+
+    rangX = [.3,.5,.7,.9,.95];
+    plt.plot(rangX,allQuestRatios,color='orange'); 
+  
+
+    plt.scatter(rangX,allQuestRatios,s=50,marker='*',color='black', label='Tested Values'); 
+    plt.xlabel("Matched Accuracy"); 
+    plt.ylabel("Percentage of Actions which include Questions"); 
+    #plt.axhline(0.63, linestyle='--',color='black',label='Nonhuman Average')
+    plt.legend(); 
+    plt.title("Effect of Matched Accuracy on Number of Questions"); 
+    plt.ylim([.5,1])
+
+
+    if(show):
+        plt.show(); 
+    else:
+        plt.savefig('../figs/acc_quests.png'); 
+
+   # print(numQuests); 
+
+
+def availQuestionsCheck(show=False):
+    data = np.load('../data/avail_matched_quests.npy',allow_pickle=True).item();  
+
+    plt.figure(); 
+
+    keySet = ['3','5','7','9','95']
+
+    #for ac in keySet:
+
+    numQuests = {}; 
+    numActs = {}; 
+
+    numInside = {}; 
+    numNear = {}; 
+    for ac in keySet:
+        total = 0; 
+        totalActs = 0; 
+        totalNear = 0; 
+        totalInside = 0; 
+        for run in data[ac]:
+            for act in run:
+                if(act[1][0] is not None):
+                    if(act[1][1] == 'Near'):
+                        totalNear += 1; 
+                    elif(act[1][1] == 'Inside'):
+                        totalInside += 1; 
+                    total += 1; 
+                totalActs += 1; 
+        numQuests[ac] = total; 
+        numActs[ac] = totalActs; 
+        numInside[ac] = totalInside; 
+        numNear[ac] = totalNear
+
+    for ac in keySet:
+        print("Availability: {}, Percent Questions: {}".format(ac,numQuests[ac]/numActs[ac])); 
+        #print("Availability: {}, Per Near: {}, Per Inside: {}".format(ac,numNear[ac]/numQuests[ac], numInside[ac]/numQuests[ac])); 
+        #print("Availability: {}, Per Close: {}".format(ac,numNear[ac]/numQuests[ac]+ numInside[ac]/numQuests[ac])); 
+
+    allQuestRatios = []; 
+    for ac in keySet:
+        allQuestRatios.append(numQuests[ac]/numActs[ac]); 
+
+    rangX = [.3,.5,.7,.9,.95];
+    plt.plot(rangX,allQuestRatios,color='orange'); 
+  
+
+    plt.scatter(rangX,allQuestRatios,s=50,marker='*',color='black', label='Tested Values'); 
+    plt.xlabel("Matched Availability"); 
+    plt.ylabel("Percentage of Actions which include Questions"); 
+    #plt.axhline(0.63, linestyle='--',color='black',label='Nonhuman Average')
+    plt.legend(); 
+    plt.title("Effect of Matched Availability on Number of Questions"); 
+    plt.ylim([.5,1])
+
+
+    if(show):
+        plt.show(); 
+    else:
+        plt.savefig('../figs/avail_quests.png'); 
+
+
+def humanVignetteExtract():
+    allDat = []; 
+
+    print("Extracting data for human test"); 
+
+    mults = ['Human_Long','NonHuman_Long']
+
+    for po in mults:
+        print("Plan: {}".format(po)); 
+        allStates = []; 
+        for i in range(0,250):
+            #print(i); 
+            data = np.load('../data/{}/{}_{}.npy'.format(po,po,i), allow_pickle=True).item(); 
+            #if(data['Captured'] == True):
+                #allStates.append(data['TotalTime']); 
+            allStates.append(data['States']); 
+            del data
+        allDat.append(allStates); 
+    np.save('../data/human_nonhuman_states.npy',allDat);
+
+    
+
+
+def humanVignetteCheck(show=False):
+    
+    plt.figure(); 
+    data = np.load('../data/human_nonhuman_states.npy',allow_pickle=True)
+    
+
+
+    hum_cands = [221]; 
+    non_cands = [50]; 
+
+    for run in hum_cands:
+
+        #import the background image
+        img = mpimg.imread('../img/overhead_mini_fit.png')
+        plt.imshow(img); 
+
+
+
+
+        s = np.array(data[0][run]); 
+
+        plt.scatter(s[:,0],1000-s[:,1],color='green',alpha=0.8,s=2); 
+
+
+        U = []; 
+        V = []; 
+        for i in range(0,len(s)-1):
+            # U.append(s[i,0] -s[i+1,0])
+            # V.append(s[i,1] -s[i+1,1])
+            U.append(s[i+1,0] -s[i,0])
+            V.append(s[i+1,1] -s[i,1])
+
+
+        plt.quiver(s[:,0][0:-1],1000-s[:,1][0:-1], U,V, color=[[0,i/len(s[:,0]),.5*(1-(i/len(s[:,0])))] for i in range(0,len(s[:,0]))],alpha=0.8,headwidth=5,headlength=5)
+
+
+        U = []; 
+        V = []; 
+        for i in range(0,len(s)-1):
+            # U.append(s[i,0] -s[i+1,0])
+            # V.append(s[i,1] -s[i+1,1])
+            U.append(s[i+1,2] -s[i,2])
+            V.append(s[i+1,3] -s[i,3])
+
+        plt.scatter(s[:,2],1000-s[:,3],color='red',s=2); 
+        plt.quiver(s[:,2][0:-1],1000-s[:,3][0:-1], U,V, color=[[i/len(s[:,0]),0,0] for i in range(0,len(s[:,0]))],alpha=0.8,headwidth=5,headlength=5)
+
+        plt.title("Run: {}".format(run)); 
+
+        if(show):
+            plt.show(); 
+        else:
+            plt.savefig('../figs/human_vignette.png'); 
+
+
+
+    fig = plt.figure(); 
+    ims = []; 
+    s = np.array(data[0][221]); 
+    for i in range(0,len(s)):
+        img = mpimg.imread('../img/overhead_mini_fit.png')
+        plt.imshow(img); 
+        #plt.scatter(s[:,0],1000-s[:,1],color='green',alpha=0.8,s=2); 
+        plt.axis('off'); 
+        imgarr1 = plt.scatter(s[0:i,2],1000-s[0:i,3],color=[[j/i,0,0] for j in range(0,i)], animated=True)
+        imgarr2 = plt.scatter(s[0:i,0],1000-s[0:i,1],color=[[0,j/i,.5*(1-(j/i))] for j in range(0,i)], animated=True)
+
+        ims.append([imgarr1,imgarr2]); 
+    
+    ani = animation.ArtistAnimation(fig,ims,interval=50,blit=True,repeat_delay=1000); 
+    if(show):
+        plt.show();
+    else:
+        ani.save('../figs/human_pursuit.gif',writer='imagemagick')
+
+
+    plt.figure()
+    for run in non_cands:
+
+        #import the background image
+        img = mpimg.imread('../img/overhead_mini_fit.png')
+        plt.imshow(img); 
+
+
+
+
+        s = np.array(data[1][run]); 
+
+        plt.scatter(s[:,0],1000-s[:,1],color='green',alpha=0.8,s=2); 
+
+
+        U = []; 
+        V = []; 
+        for i in range(0,len(s)-1):
+            # U.append(s[i,0] -s[i+1,0])
+            # V.append(s[i,1] -s[i+1,1])
+            U.append(s[i+1,0] -s[i,0])
+            V.append(s[i+1,1] -s[i,1])
+
+
+        plt.quiver(s[:,0][0:-1],1000-s[:,1][0:-1], U,V, color=[[0,i/len(s[:,0]),.5*(1-(i/len(s[:,0])))] for i in range(0,len(s[:,0]))],alpha=0.8,headwidth=5,headlength=5)
+
+
+        U = []; 
+        V = []; 
+        for i in range(0,len(s)-1):
+            # U.append(s[i,0] -s[i+1,0])
+            # V.append(s[i,1] -s[i+1,1])
+            U.append(s[i+1,2] -s[i,2])
+            V.append(s[i+1,3] -s[i,3])
+
+        plt.scatter(s[:,2],1000-s[:,3],color='red',s=2); 
+        plt.quiver(s[:,2][0:-1],1000-s[:,3][0:-1], U,V, color=[[i/len(s[:,0]),0,0] for i in range(0,len(s[:,0]))],alpha=0.8,headwidth=5,headlength=5)
+
+        plt.title("Run: {}".format(run)); 
+
+        if(show):
+            plt.show(); 
+        else:
+            plt.savefig('../figs/Nonhuman_vignette.png'); 
+
+
+
+
+    fig = plt.figure(); 
+    ims = []; 
+    s = np.array(data[1][50]); 
+    for i in range(0,len(s)):
+        img = mpimg.imread('../img/overhead_mini_fit.png')
+        plt.imshow(img); 
+        #plt.scatter(s[:,0],1000-s[:,1],color='green',alpha=0.8,s=2); 
+        plt.axis('off'); 
+        imgarr1 = plt.scatter(s[0:i,2],1000-s[0:i,3],color=[[j/i,0,0] for j in range(0,i)], animated=True)
+        imgarr2 = plt.scatter(s[0:i,0],1000-s[0:i,1],color=[[0,j/i,.5*(1-(j/i))] for j in range(0,i)], animated=True)
+        ims.append([imgarr1,imgarr2]); 
+    
+    ani = animation.ArtistAnimation(fig,ims,interval=50,blit=True,repeat_delay=1000); 
+    if(show):
+        plt.show();
+    else:
+        ani.save('../figs/nonhuman_patrol.gif',writer='imagemagick')
+
+
+
+def sketchVignetteExtract():
+    allDat = {'15s':[],'30s':[],'60s':[],'120s':[]}; 
+
+    mults = ['15s','30s','60s','120s']
+
+    for po in mults:
+        print("Sketch Rate: {}".format(po)); 
+        allSketches = []; 
+        for i in range(0,100):
+            #print(i); 
+            data = np.load('../data/sketchRate_{}/sketchRate_{}_{}.npy'.format(po,po,i), allow_pickle=True).item(); 
+            allDat[po].append(data['Sketches']); 
+
+
+            del data
+        
+    np.save('../data/sketchRate_sketches.npy',allDat); 
+
+
+def sketchVignetteCheck(show=False):
+    
+    data = np.load('../data/sketchRate_sketches.npy',allow_pickle=True).item(); 
+
+    keySet = ['15s','30s','60s','120s']
+
+
+    for key in keySet:
+        allLengths = []
+        for k in data[key]:
+            allLengths.append(len(k)); 
+        print("Key: {}, Mean Length: {}".format(key,np.mean(allLengths))); 
+
+    #print(data['30s'][1][0].points)
+
+    #for run in range(11,len(data['30s'])):
+
+        # if(len(data['30s'][run]) < 12):
+        #     continue; 
+
+    plt.figure(); 
+    img = mpimg.imread('../img/overhead_mini_fit.png')
+    plt.imshow(img); 
+    for r in data['30s'][11]: 
+        plt.scatter(r.points[:, 0], 1000-r.points[:, 1],color='red',alpha=0.8, s=20);
+        plt.plot([r.points[-1,0],r.points[0,0]], [1000-r.points[-1,1],1000-r.points[0,1]],color='black',linestyle='-', linewidth=2)
+        for i in range(0,len(r.points)-1):
+            plt.plot([r.points[i,0],r.points[i+1][0]],[1000-r.points[i,1],1000-r.points[i+1,1]],color='black',linestyle='-', linewidth=2)
+    plt.title("~{} Questions".format((1+10*len(data['30s'][11]))));  
+    plt.axis("Off")
+    if(show):
+        plt.show(); 
+    else:
+        plt.savefig('../figs/sketch_30.png'); 
+
+
+
+
+    plt.figure(); 
+    cand = 47; 
+    img = mpimg.imread('../img/overhead_mini_fit.png')
+    plt.imshow(img); 
+    for r in data['60s'][cand]: 
+        plt.scatter(r.points[:, 0], 1000-r.points[:, 1],color='red',alpha=0.8, s=20);
+        plt.plot([r.points[-1,0],r.points[0,0]], [1000-r.points[-1,1],1000-r.points[0,1]],color='black',linestyle='-', linewidth=2)
+        for i in range(0,len(r.points)-1):
+            plt.plot([r.points[i,0],r.points[i+1][0]],[1000-r.points[i,1],1000-r.points[i+1,1]],color='black',linestyle='-', linewidth=2)
+    plt.title("~{} Questions".format((1+10*len(data['60s'][cand])))); 
+    #plt.xlabel(cand) 
+    plt.axis("Off")
+    if(show):
+        plt.show(); 
+    else:
+        plt.savefig('../figs/sketch_60.png'); 
+
+
+    plt.figure(); 
+    cand = 23; 
+
+    img = mpimg.imread('../img/overhead_mini_fit.png')
+    plt.imshow(img); 
+    for r in data['120s'][cand]: 
+        plt.scatter(r.points[:, 0], 1000-r.points[:, 1],color='red',alpha=0.8, s=20);
+        plt.plot([r.points[-1,0],r.points[0,0]], [1000-r.points[-1,1],1000-r.points[0,1]],color='black',linestyle='-', linewidth=2)
+        for i in range(0,len(r.points)-1):
+            plt.plot([r.points[i,0],r.points[i+1][0]],[1000-r.points[i,1],1000-r.points[i+1,1]],color='black',linestyle='-', linewidth=2)
+    plt.title("~{} Questions".format((1+10*len(data['120s'][cand])))); 
+    #plt.xlabel(cand) 
+    plt.axis("Off")
+    if(show):
+        plt.show(); 
+    else:
+        plt.savefig('../figs/sketch_120.png'); 
+ 
 
 if __name__ == '__main__':
-    #poisExtract(); 
-    poisCheck();
-    #amultExtract(); 
-    amultCheck(); 
+    # #poisExtract(); 
+    # poisCheck();
+    # #amultExtract(); 
+    # amultCheck(); 
 
-    #sketchRateExtract(); 
-    sketchRateCheck();
+    # #sketchRateExtract(); 
+    # sketchRateCheck();
 
-    #accuracyDataExtract();  
-    accuracyDataCheck();
+    # #accuracyDataExtract();  
+    # accuracyDataCheck();
 
-    #availabilityDataExtract(); 
-    availabilityDataCheck(); 
+    # #availabilityDataExtract(); 
+    # availabilityDataCheck(); 
 
-    #predictiveObsPlanningExtract(); 
-    predictiveObsPlanningCheck(); 
+    # #predictiveObsPlanningExtract(); 
+    # predictiveObsPlanningCheck(); 
 
     #humanDataExtract(); 
-    humanDataCheck(); 
+    #humanDataCheck(False); 
+
+    #predictiveStateObsExtract(); 
+    #predictiveSlipAways(True); 
+
+    #accQuestionsExtract(); 
+    #accQuestionsCheck(False)
+
+    #availQuestionsExtract(); 
+    #availQuestionsCheck(False); 
+
+    #humanVignetteExtract(); 
+    #humanVignetteCheck(False); 
+
+    #sketchVignetteExtract(); 
+    sketchVignetteCheck(False); 
