@@ -1,7 +1,7 @@
 function postProcessROSbag(data_dir)
 %% Parameters
 % topics
-capture_topic = '/Obs';
+capture_topic = '/stopCon';
 sketch_topic = '/Sketch';
 pull_topic = '/Pull';
 pull_answer_topic = '/PullAnswer';
@@ -50,7 +50,11 @@ if contains(data_dir.name,'Subject')
     subject_number = double(string(extractBetween(data_dir.name,'Subject','_')));
     questionnaire = readtable("Post-Simulation Questionnaire.csv");
     background = readtable("Subject Background Questionnaire.csv");
-    subject_data_idx = find(questionnaire.SubjectID==subject_number);
+    subject_data_ID_string = string(questionnaire.SubjectID);
+    for i=1:length(subject_data_ID_string)
+        subject_data_ID(i) = str2num(subject_data_ID_string(i));
+    end
+    subject_data_idx = find(subject_data_ID==subject_number);
     subject_data_idx_back = find(background.WhatIsYourSubjectID_==subject_number);
     for i=1:length(subject_data_idx)
         if contains(questionnaire.Task{subject_data_idx(i)},'Pull')
@@ -74,9 +78,13 @@ if contains(data_dir.name,'Subject')
     end
     subject_background = background(subject_data_idx_back,:);
     subject_survey_data = questionnaire(subject_data_idx(idx_survey_response),:);
+    trust_questions = table2array(subject_survey_data(:,23:30));
+    subject_survey_trust = mean(trust_questions(~isnan(trust_questions)));
+    
 end
-questionnaire = readtable("Post-Simulation Questionnaire.csv");
+%questionnaire = readtable("Post-Simulation Questionnaire.csv");
 %% Exctract Data
+num_responses = 0;
 % get start time to zero other times
 for i=1:n
     if strcmp(bags(i).topic,target_topic)
@@ -99,13 +107,13 @@ for i=1:n
             end
         % isolate condition data and its rosbag time data
         case capture_topic
-            conditions = string(bags(i).data.data);
-            conditions(:,:) = erase(conditions(:,:),'"');
+%             conditions = string(bags(i).data.data);
+%             conditions(:,:) = erase(conditions(:,:),'"');
             condition_times = bags(i).data.rosbagTimestamp-start_time;
             condition_times = condition_times.*time_conversion;
             % get time to capture
-            idx_condition = find(conditions=='Detect');
-            capture_time = condition_times(idx_condition);
+%             idx_condition = find(conditions=='Detect');
+            capture_time = condition_times(1);
         % number of sketches
         case sketch_topic
             sketch_time = bags(i).data{:,1}-start_time;
@@ -145,7 +153,7 @@ for i=1:n
             camera_number = bags(i).data.data;
             % remove #6 as it is the drone camera
             camera_number_adj = camera_number(find(camera_number~=6));
-            num_views = length(unique(camera_number_adj));
+            num_views = length(camera_number_adj);
             %num_camera_switches = length(camera_number);
         case drone_topic
             drone_time = bags(i).data.rosbagTimestamp-start_time;
@@ -182,7 +190,10 @@ if pull && exist('pull_answer_counter','var')
 end
 
 %% Sketch Accuracy Pull
-
+all_accuracy_responses = [];
+accuracy_pull_compass = [];
+accuracy_push_compass = [];
+all_accuracy_responses_compass = [];
 % if pull, find target location when question is answered
 if pull && exist('pull_answer_counter','var')
     % get only answered questions
@@ -230,6 +241,37 @@ if pull && exist('pull_answer_counter','var')
         end
         pulls(i).Prob = cond_label;
         pulls(i).NearProb = cond_near;
+        
+        % evaluate response
+        if pulls(i).Label == 9
+            [~,maxlabel] = max(pulls(i).NearProb);
+            maxlabel = maxlabel-1;
+            if maxlabel == 0
+                pulls(i).Correct_Softmax = true;
+            else
+                pulls(i).Correct_Softmax = false;
+            end
+        else
+            pulls(i).CompassLabel = compassEval(sketches(pulls(i).Sketch).Points,target_during_pull_answer(i,:));
+            if pulls(i).CompassLabel == pulls(i).Label
+                pulls(i).Correct_Compass = true;
+            else
+                if pulls(i).Label ~= 8
+                    pulls(i).Correct_Compass = false;
+                else
+                    pulls(i).Correct_Compass = [];
+                end
+            end
+            accuracy_pull_compass = [accuracy_pull_compass,pulls(i).Correct_Compass];
+            [~,maxlabel] = max(pulls(i).Prob);
+            maxlabel = maxlabel-1;
+            if maxlabel == pulls(i).Label
+                pulls(i).Correct_Softmax = true;
+            else
+                pulls(i).Correct_Softmax = false;
+            end
+        end
+        accuracy_pull(i) = pulls(i).Correct_Softmax;
         % get probability of target location near answer
 %         for j=1:answer_buffer
 %             [val,near_prob] = callSoftMax(sketches(pulls(i).Sketch).Points,target_near_pull_answer(i,j,:));
@@ -239,7 +281,12 @@ if pull && exist('pull_answer_counter','var')
         % uncomment this to plot sketches
         %accuracyPlot(pulls(i),sketches(pulls(i).Sketch))
     end
+    all_accuracy_responses = [all_accuracy_responses,accuracy_pull];
+    all_accuracy_responses_compass = [all_accuracy_responses_compass,accuracy_pull_compass];
+    num_responses = num_responses + length(pulls);
 end
+
+
 
 %% Sketch Accuracy Push
 if push && exist('push_sketch_name','var')
@@ -274,6 +321,39 @@ if push && exist('push_sketch_name','var')
         end
         pushes(i).Prob = cond_label;
         pushes(i).NearProb = cond_near;
+        
+        % evaluate response
+        if pushes(i).Label == 9
+            [~,maxlabel] = max(pushes(i).NearProb);
+            maxlabel = maxlabel-1;
+            if maxlabel == 0
+                pushes(i).Correct_Softmax = true;
+            else
+                pushes(i).Correct_Softmax = false;
+            end
+        else
+            pushes(i).CompassLabel = compassEval(sketches(pushes(i).Sketch).Points,target_during_push_answer(i,:));
+            if pushes(i).CompassLabel == pushes(i).Label
+                pushes(i).Correct_Compass = true;
+            else
+                if pushes(i).Label ~= 8
+                    pushes(i).Correct_Compass = false;
+                else
+                    pushes(i).Correct_Compass = [];
+                end
+            end
+            accuracy_push_compass = [accuracy_push_compass,pushes(i).Correct_Compass];
+            [~,maxlabel] = max(pushes(i).Prob);
+            maxlabel = maxlabel-1;
+            if maxlabel == pushes(i).Label
+                pushes(i).Correct_Softmax = true;
+            else
+                pushes(i).Correct_Softmax = false;
+            end
+        end
+        accuracy_push(i) = pushes(i).Correct_Softmax;
+        
+        
         % get probability of target location near answer
 %         for j=1:answer_buffer
 %             [val,near_prob] = callSoftMax(sketches(pushes(i).Sketch).Points,target_near_push_answer(i,j,:));
@@ -281,8 +361,13 @@ if push && exist('push_sketch_name','var')
 %         end
 %         pushes(i).Surrounding = push_surr;
     end    
-    
+    all_accuracy_responses = [all_accuracy_responses,accuracy_push];
+    all_accuracy_responses_compass = [all_accuracy_responses_compass,accuracy_push_compass];
+    num_responses = num_responses+length(pushes);
 end
+%% Total accuracy rating
+total_accuracy_softmax = mean(all_accuracy_responses);
+total_accuracy_compass = mean(all_accuracy_responses_compass);
 %% Output .mat data file
 out_dir_str = "post-process-output"+date;
 if ~exist(out_dir_str, 'dir')
@@ -296,11 +381,11 @@ end
 % save .mat only if human subject data
 if subject_case
     if pull && exist('pull_answer_counter','var')
-        save(file_name,'pulls','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background')
+        save(file_name,'pulls','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background','subject_survey_trust','total_accuracy_softmax','total_accuracy_compass')
     elseif push && exist('push_sketch_name','var')
-        save(file_name,'pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background')
+        save(file_name,'pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background','subject_survey_trust','total_accuracy_softmax','total_accuracy_compass')
     elseif exist('pull_answer_counter','var') && exist('push_sketch_name','var')
-        save(file_name,'pulls','pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background')
+        save(file_name,'pulls','pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background','subject_survey_trust','total_accuracy_softmax','total_accuracy_compass')
     end
 end
 end

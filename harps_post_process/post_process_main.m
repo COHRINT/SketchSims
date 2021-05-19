@@ -10,7 +10,7 @@ sketches drawn, subject response time, number of camera views observed, etc
 
 Authors: Hunter Ray, Trevor Slack
 
-Date Modified: 4/18/2021
+Date Modified: 5/19/2021
 %}
 clear all; close all; clc;
 %% Find Data

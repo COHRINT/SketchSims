@@ -16,7 +16,7 @@ for i=1:a
 end
 % add evaluation point
 points_str = append(points_str,' ',string(eval_point(1)),' ',string(eval_point(2)));
-commandStr = append('python3 ',pwd,'\softMaxSketchCall.py',points_str);
+commandStr = append('python ',pwd,'\softMaxSketchCall.py',points_str);
 % call script
 [status,cmdout] = system(commandStr);
 % extract values
