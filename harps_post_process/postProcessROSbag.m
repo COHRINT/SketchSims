@@ -8,6 +8,7 @@ pull_answer_topic = '/PullAnswer';
 camera_topic = '/Camera_Num';
 target_topic = '/Target/car';
 drone_topic = '/Drone1/pose';
+drone_goal = '/Drone1/Goal';
 push_topic = '/Push';
 % constants
 time_conversion = 1e-9; % conversion from nanoseconds to seconds
@@ -87,7 +88,7 @@ end
 num_responses = 0;
 % get start time to zero other times
 for i=1:n
-    if strcmp(bags(i).topic,drone_topic)
+    if strcmp(bags(i).topic,drone_goal)
         %target_time = cell2mat(bags(i).data(2:end,1));
         reference_time = bags(i).data.rosbagTimestamp;
         start_time = reference_time(1);

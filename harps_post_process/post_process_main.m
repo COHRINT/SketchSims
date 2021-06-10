@@ -10,9 +10,10 @@ sketches drawn, subject response time, number of camera views observed, etc
 
 Authors: Hunter Ray, Trevor Slack
 
-Date Modified: 6/7/2021
+Date Modified: 6/9/2021
 %}
 clear all; close all; clc;
+tic
 %% Find Data
 files = dir(pwd);
 dirFlags = [files.isdir];
@@ -31,6 +32,7 @@ for i=1:length(subject_directories)
         end
     end  
 end
+toc
 waitbar(1,f,'Finished!');
 pause(1)
 close(f)

@@ -28,7 +28,8 @@ try
         near_prob(i) = str2num(near_prob_str(i));
     end
 catch
-    near_prob = zeros(6,1);
+    %disp('near prob failed to evaluate')
+    near_prob = NaN(6,1);
 end
 
 % else
