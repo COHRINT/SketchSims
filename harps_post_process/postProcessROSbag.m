@@ -81,6 +81,8 @@ if contains(data_dir.name,'Subject')
     subject_survey_data = questionnaire(subject_data_idx(idx_survey_response),:);
     trust_questions = table2array(subject_survey_data(:,10:17));
     subject_survey_trust = mean(trust_questions(~isnan(trust_questions)));
+    workload_questions = table2array(subject_survey_data(:,4:8));
+    subject_survey_workload = mean(workload_questions(~isnan(workload_questions)));
     
 end
 %questionnaire = readtable("Post-Simulation Questionnaire.csv");
@@ -194,7 +196,9 @@ if pull && exist('pull_answer_counter','var')
 end
 
 %% Sketch Accuracy Pull
-all_accuracy_responses = [];
+all_accuracy_responses_softmax = [];
+accuracy_pull_softmax = [];
+accuracy_push_softmax = [];
 accuracy_pull_compass = [];
 accuracy_push_compass = [];
 all_accuracy_responses_compass = [];
@@ -211,15 +215,20 @@ if pull && exist('pull_answer_counter','var')
         pull_question_sketch_names(i) = erase(pull_question_sketch_names(i),'"');
     end
     
+    % split sentences into words (these variable names are absurd at this
+    % point) Handles edge case where sketch name appears multiple times in
+    % sentence
+    pull_question_answered_sketchnames = split(pull_question_answered,' ');
     % get question direction
     for i=1:length(pull_question_answered)
         pull_question_direction = getLabelNum(pull_question_answered(i));
         for j=1:length(sketch_name)
-            if contains(pull_question_answered(i),sketch_name(j))
+            if contains(pull_question_answered_sketchnames(1,i,end),sketch_name(j))
                 pull_question_sketch = j;
+                break
             end
         end
-        pulls(i) = pullCreate(pull_question_answered(i),pull_time(i),pull_question_sketch,pull_question_direction,pull_answer_time(i),response_time(i),pull_answer_response(i),i);
+        pulls(i) = pullCreate(pull_question_answered(i),pull_question_answered_sketchnames(1,i,6),pull_question_answered_sketchnames(1,i,4),pull_time(i),pull_question_sketch,pull_question_direction,pull_answer_time(i),response_time(i),pull_answer_response(i),i);
     end
     
     % target location during question answer
@@ -236,58 +245,109 @@ if pull && exist('pull_answer_counter','var')
         pulls(i).Target_Location = target_during_pull_answer(i,:);
     end
     
-    % get probabilities 
+    
     for i=1:length(pulls)
-        if strcmp(sketches(pulls(i).Sketch).Name,'you')
+        % softmax/compass eval
+        if strcmp(pulls(i).Sketch_Name,'You')
+            % softmax
             [cond_label,cond_near]=youSketchEval(drone_during_pull_answer(i,:),target_during_pull_answer(i,:));
+            % compass
+            drone = drone_during_pull_answer(i,:);
+            box_width = 10;
+            points = [drone(1)+box_width,drone(1)+box_width,drone(1)-box_width,drone(1)-box_width;drone(2)-box_width,drone(2)+box_width,drone(2)+box_width,drone(2)-box_width];
+            cond_label_compass = compassEval(points,target_during_pull_answer(i,:));
+        elseif (strcmp(pulls(i).Label_Name,'Inside') || strcmp(pulls(i).Label_Name,'Near'))
+            [cond_label,cond_near] = callSoftMax(sketches(pulls(i).Sketch).Points,target_during_pull_answer(i,:));
+            cond_label_compass = nan(8,1);
         else
             [cond_label,cond_near] = callSoftMax(sketches(pulls(i).Sketch).Points,target_during_pull_answer(i,:));
+            cond_label_compass = compassEval(sketches(pulls(i).Sketch).Points,target_during_pull_answer(i,:));
         end
         pulls(i).Prob = cond_label;
         pulls(i).NearProb = cond_near;
-        
-        % evaluate response
-        if pulls(i).Label == 9
-            [~,maxlabel] = max(pulls(i).NearProb);
-            maxlabel = maxlabel-1;
-            if maxlabel == 0
-                pulls(i).Correct_Softmax = true;
-            else
-                pulls(i).Correct_Softmax = false;
+        pulls(i).CompassProb = cond_label_compass;
+        % accuracy softmax and compass
+        if strcmp(pulls(i).Label_Name,'Near')
+            if pulls(i).Response == 1
+                % if yes, prob near
+                accuracy_pull_softmax = [accuracy_pull_softmax,pulls(i).NearProb(1)];
+            elseif pulls(i).Response == -1
+                % if no, prob not near
+                accuracy_pull_softmax = [accuracy_pull_softmax,1-pulls(i).NearProb(1)];
             end
         else
-            pulls(i).CompassProb = compassEval(sketches(pulls(i).Sketch).Points,target_during_pull_answer(i,:));
-            maxval_compass = max(pulls(i).CompassProb);
-            idx_maxCompasslabel = find(pulls(i).CompassProb == maxval_compass)-1;
-            if ismember(pulls(i).Label,idx_maxCompasslabel)
-                pulls(i).Correct_Compass = true;
-            else
-                if pulls(i).Label ~= 8
-                    pulls(i).Correct_Compass = false;
-                else
-                    pulls(i).Correct_Compass = [];
+            if pulls(i).Response == 1
+                accuracy_pull_softmax = [accuracy_pull_softmax,pulls(i).Prob(pulls(i).Label+1)/max(pulls(i).Prob)];
+            elseif pulls(i).Response == -1 
+                accuracy_pull_softmax = [accuracy_pull_softmax,1-pulls(i).Prob(pulls(i).Label+1)/max(pulls(i).Prob)];
+            end
+            
+            if ~strcmp(pulls(i).Label_Name,'Inside')
+                if pulls(i).Response == 1
+                    accuracy_pull_compass = [accuracy_pull_compass,pulls(i).CompassProb(pulls(i).Label+1)/max(pulls(i).CompassProb)];
+                elseif pulls(i).Response == -1
+                    accuracy_pull_compass = [accuracy_pull_compass,1-pulls(i).CompassProb(pulls(i).Label+1)/max(pulls(i).CompassProb)];
                 end
             end
-            accuracy_pull_compass = [accuracy_pull_compass,pulls(i).Correct_Compass];
-            [~,maxlabel] = max(pulls(i).Prob);
-            maxlabel = maxlabel-1;
-            if maxlabel == pulls(i).Label
-                pulls(i).Correct_Softmax = true;
-            else
-                pulls(i).Correct_Softmax = false;
-            end
         end
-        accuracy_pull(i) = pulls(i).Correct_Softmax;
-        % get probability of target location near answer
-%         for j=1:answer_buffer
-%             [val,near_prob] = callSoftMax(sketches(pulls(i).Sketch).Points,target_near_pull_answer(i,j,:));
-%             ps(j) = surroundingCreate(target_near_pull_answer(i,j,:),val,near_prob);
-%         end
-%         pulls(i).Surrounding = ps;
-        % uncomment this to plot sketches
-        %accuracyPlot(pulls(i),sketches(pulls(i).Sketch))
     end
-    all_accuracy_responses = [all_accuracy_responses,accuracy_pull];
+    
+    
+    
+    
+    
+    % get probabilities 
+%     for i=1:length(pulls)
+%         if strcmp(sketches(pulls(i).Sketch).Name,'you')
+%             [cond_label,cond_near]=youSketchEval(drone_during_pull_answer(i,:),target_during_pull_answer(i,:));
+%         else
+%             [cond_label,cond_near] = callSoftMax(sketches(pulls(i).Sketch).Points,target_during_pull_answer(i,:));
+%         end
+%         pulls(i).Prob = cond_label;
+%         pulls(i).NearProb = cond_near;
+%         
+%         % evaluate response
+%         if pulls(i).Label == 9
+%             [~,maxlabel] = max(pulls(i).NearProb);
+%             maxlabel = maxlabel-1;
+%             if maxlabel == 0
+%                 pulls(i).Correct_Softmax = true;
+%             else
+%                 pulls(i).Correct_Softmax = false;
+%             end
+%         else
+%             pulls(i).CompassProb = compassEval(sketches(pulls(i).Sketch).Points,target_during_pull_answer(i,:));
+%             maxval_compass = max(pulls(i).CompassProb);
+%             idx_maxCompasslabel = find(pulls(i).CompassProb == maxval_compass)-1;
+%             if ismember(pulls(i).Label,idx_maxCompasslabel)
+%                 pulls(i).Correct_Compass = true;
+%             else
+%                 if pulls(i).Label ~= 8
+%                     pulls(i).Correct_Compass = false;
+%                 else
+%                     pulls(i).Correct_Compass = [];
+%                 end
+%             end
+%             accuracy_pull_compass = [accuracy_pull_compass,pulls(i).Correct_Compass];
+%             [~,maxlabel] = max(pulls(i).Prob);
+%             maxlabel = maxlabel-1;
+%             if maxlabel == pulls(i).Label
+%                 pulls(i).Correct_Softmax = true;
+%             else
+%                 pulls(i).Correct_Softmax = false;
+%             end
+%         end
+%         accuracy_pull(i) = pulls(i).Correct_Softmax;
+%         % get probability of target location near answer
+% %         for j=1:answer_buffer
+% %             [val,near_prob] = callSoftMax(sketches(pulls(i).Sketch).Points,target_near_pull_answer(i,j,:));
+% %             ps(j) = surroundingCreate(target_near_pull_answer(i,j,:),val,near_prob);
+% %         end
+% %         pulls(i).Surrounding = ps;
+%         % uncomment this to plot sketches
+%         %accuracyPlot(pulls(i),sketches(pulls(i).Sketch))
+%     end
+    all_accuracy_responses_softmax = [all_accuracy_responses_softmax,accuracy_pull_softmax];
     all_accuracy_responses_compass = [all_accuracy_responses_compass,accuracy_pull_compass];
     num_responses = num_responses + length(pulls);
     
@@ -297,7 +357,7 @@ if pull && exist('pull_answer_counter','var')
     k=1;
     for i=1:length(pull_question)
         if ~ismember(i,pull_answer_counter)
-            pulls_unanswered(k) = pullCreate(pull_question(i),pull_time(i),nan,nan,nan,nan,nan,nan);
+            pulls_unanswered(k) = pullCreate(pull_question(i),nan,nan,pull_time(i),nan,nan,nan,nan,nan,nan);
             k=k+1;
         end
     end
@@ -333,53 +393,87 @@ if push && exist('push_sketch_name','var')
     end
     
     for i=1:length(pushes)
+        % softmax/compass eval
         if strcmp(pushes(i).Sketch_Name,'You')
+            % softmax
             [cond_label,cond_near]=youSketchEval(drone_during_pull_answer(i,:),target_during_push_answer(i,:));
+            % compass
+            drone = drone_during_pull_answer(i,:);
+            box_width = 10;
+            points = [drone(1)+box_width,drone(1)+box_width,drone(1)-box_width,drone(1)-box_width;drone(2)-box_width,drone(2)+box_width,drone(2)+box_width,drone(2)-box_width];
+            cond_label_compass = compassEval(points,target_during_push_answer(i,:));
+        elseif (strcmp(pushes(i).Label_Name,'Inside') || strcmp(pushes(i).Label_Name,'Near'))
+            [cond_label,cond_near] = callSoftMax(sketches(pushes(i).Sketch).Points,target_during_push_answer(i,:));
+            cond_label_compass = nan(8,1);
         else
             [cond_label,cond_near] = callSoftMax(sketches(pushes(i).Sketch).Points,target_during_push_answer(i,:));
+            cond_label_compass = compassEval(sketches(pushes(i).Sketch).Points,target_during_push_answer(i,:));
         end
         pushes(i).Prob = cond_label;
         pushes(i).NearProb = cond_near;
-        
-        % evaluate response
-        if pushes(i).Label == 9
-            [~,maxlabel] = max(pushes(i).NearProb);
-            maxlabel = maxlabel-1;
-            if maxlabel == 0
-                pushes(i).Correct_Softmax = true;
+        pushes(i).CompassProb = cond_label_compass;
+        % accuracy softmax and compass
+        if strcmp(pushes(i).Label_Name,'Near')
+            if contains(pushes(i).Determiner,'not')
+                accuracy_push_softmax = [accuracy_push_softmax,1-pushes(i).NearProb(1)];
             else
-                pushes(i).Correct_Softmax = false;
+                accuracy_push_softmax = [accuracy_push_softmax,pushes(i).NearProb(1)];
             end
         else
-            if strcmp(pushes(i).Sketch_Name,'You')
-                drone = drone_during_pull_answer(i,:);
-                box_width = 10;
-                points = [drone(1)+box_width,drone(1)+box_width,drone(1)-box_width,drone(1)-box_width;drone(2)-box_width,drone(2)+box_width,drone(2)+box_width,drone(2)-box_width];
-                pushes(i).CompassProb = compassEval(points,target_during_push_answer(i,:));
+            if contains(pushes(i).Determiner,'not')
+                accuracy_push_softmax = [accuracy_push_softmax,1-pushes(i).Prob(pushes(i).Label+1)/max(pushes(i).Prob)];
             else
-                pushes(i).CompassProb = compassEval(sketches(pushes(i).Sketch).Points,target_during_push_answer(i,:));
-            end
-            maxval_compass = max(pushes(i).CompassProb);
-            idx_maxCompasslabel = find(pushes(i).CompassProb == maxval_compass)-1;
-            if ismember(pushes(i).Label,idx_maxCompasslabel)
-                pushes(i).Correct_Compass = true;
-            else
-                if pushes(i).Label ~= 8
-                    pushes(i).Correct_Compass = false;
+                accuracy_push_softmax = [accuracy_push_softmax,pushes(i).Prob(pushes(i).Label+1)/max(pushes(i).Prob)];
+            end            
+            if ~strcmp(pushes(i).Label_Name,'Inside')
+                if contains(pushes(i).Determiner,'not')
+                    accuracy_push_compass = [accuracy_push_compass,1-pushes(i).CompassProb(pushes(i).Label+1)/max(pushes(i).CompassProb)];
                 else
-                    pushes(i).Correct_Compass = [];
-                end
-            end
-            accuracy_push_compass = [accuracy_push_compass,pushes(i).Correct_Compass];
-            [~,maxlabel] = max(pushes(i).Prob);
-            maxlabel = maxlabel-1;
-            if maxlabel == pushes(i).Label
-                pushes(i).Correct_Softmax = true;
-            else
-                pushes(i).Correct_Softmax = false;
+                    accuracy_push_compass = [accuracy_push_compass,pushes(i).CompassProb(pushes(i).Label+1)/max(pushes(i).CompassProb)];
+                end                   
             end
         end
-        accuracy_push(i) = pushes(i).Correct_Softmax;
+
+        
+%         % compass eval
+%         if pushes(i).Label == 9
+%             [~,maxlabel] = max(pushes(i).NearProb);
+%             maxlabel = maxlabel-1;
+%             if maxlabel == 0
+%                 pushes(i).Correct_Softmax = true;
+%             else
+%                 pushes(i).Correct_Softmax = false;
+%             end
+%         else
+%             if strcmp(pushes(i).Sketch_Name,'You')
+%                 drone = drone_during_pull_answer(i,:);
+%                 box_width = 10;
+%                 points = [drone(1)+box_width,drone(1)+box_width,drone(1)-box_width,drone(1)-box_width;drone(2)-box_width,drone(2)+box_width,drone(2)+box_width,drone(2)-box_width];
+%                 pushes(i).CompassProb = compassEval(points,target_during_push_answer(i,:));
+%             else
+%                 pushes(i).CompassProb = compassEval(sketches(pushes(i).Sketch).Points,target_during_push_answer(i,:));
+%             end
+%             maxval_compass = max(pushes(i).CompassProb);
+%             idx_maxCompasslabel = find(pushes(i).CompassProb == maxval_compass)-1;
+%             if ismember(pushes(i).Label,idx_maxCompasslabel)
+%                 pushes(i).Correct_Compass = true;
+%             else
+%                 if pushes(i).Label ~= 8
+%                     pushes(i).Correct_Compass = false;
+%                 else
+%                     pushes(i).Correct_Compass = [];
+%                 end
+%             end
+%             accuracy_push_compass = [accuracy_push_compass,pushes(i).Correct_Compass];
+%             [~,maxlabel] = max(pushes(i).Prob);
+%             maxlabel = maxlabel-1;
+%             if maxlabel == pushes(i).Label
+%                 pushes(i).Correct_Softmax = true;
+%             else
+%                 pushes(i).Correct_Softmax = false;
+%             end
+%         end
+%         accuracy_push(i) = pushes(i).Correct_Softmax;
         
         
         % get probability of target location near answer
@@ -389,7 +483,7 @@ if push && exist('push_sketch_name','var')
 %         end
 %         pushes(i).Surrounding = push_surr;
     end    
-    all_accuracy_responses = [all_accuracy_responses,accuracy_push];
+    all_accuracy_responses_softmax = [all_accuracy_responses_softmax,accuracy_push_softmax];
     all_accuracy_responses_compass = [all_accuracy_responses_compass,accuracy_push_compass];
     num_responses = num_responses+length(pushes);
 end
@@ -398,8 +492,8 @@ if ~exist('capture_time','var')
     capture_time = nan;
 end
 %% Total accuracy rating
-total_accuracy_softmax = mean(all_accuracy_responses);
-total_accuracy_compass = mean(all_accuracy_responses_compass);
+total_accuracy_softmax = mean(all_accuracy_responses_softmax(~isnan(all_accuracy_responses_softmax)));
+total_accuracy_compass = mean(all_accuracy_responses_compass(~isnan(all_accuracy_responses_compass)));
 %% Output .mat data file
 out_dir_str = "post-process-output"+date;
 if ~exist(out_dir_str, 'dir')
@@ -413,11 +507,11 @@ end
 % save .mat only if human subject data
 if subject_case
     if exist('pull_answer_counter','var') && exist('push_sketch_name','var')
-        save(file_name,'pulls','pulls_unanswered','pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background','subject_survey_trust','total_accuracy_softmax','total_accuracy_compass')
+        save(file_name,'pulls','pulls_unanswered','pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background','subject_survey_trust','total_accuracy_softmax','total_accuracy_compass','subject_survey_workload')
     elseif pull && exist('pull_answer_counter','var')
-        save(file_name,'pulls','pulls_unanswered','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background','subject_survey_trust','total_accuracy_softmax','total_accuracy_compass')
+        save(file_name,'pulls','pulls_unanswered','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background','subject_survey_trust','total_accuracy_softmax','total_accuracy_compass','subject_survey_workload')
     elseif push && exist('push_sketch_name','var')
-        save(file_name,'pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background','subject_survey_trust','total_accuracy_softmax','total_accuracy_compass')
+        save(file_name,'pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background','subject_survey_trust','total_accuracy_softmax','total_accuracy_compass','subject_survey_workload')
     end
 end
 end
@@ -435,8 +529,10 @@ function ske = sketchCreate(name,points,time,area)
 end
 
 % pull struct
-function p = pullCreate(question,asktime,sketch,label,answertime,responsetime,response,number)
+function p = pullCreate(question,sketch_name,label_name,asktime,sketch,label,answertime,responsetime,response,number)
     p.Question = question;
+    p.Sketch_Name = sketch_name;
+    p.Label_Name = label_name;
     p.AskTime = asktime;
     p.Sketch = sketch;
     p.Label = label;
