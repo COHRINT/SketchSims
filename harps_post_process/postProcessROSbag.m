@@ -34,16 +34,16 @@ n = length(bags);
 % pull, push, or both
 pull = false;
 push = false;
-% if contains(topic_files(1).folder,'Both')
-%     push = true;
-%     pull = true;
-% elseif contains(topic_files(1).folder,'Pull')
-%     pull = true;
-% elseif contains(topic_files(1).folder,'Push')
-%     push = true;
-% else
-%     error("Error: Improper Directory name. Make sure directory: " + data_dir.name +"contains either 'push', 'pull', or 'both'.")
-% end
+if contains(topic_files(1).folder,'Both')
+    push = true;
+    pull = true;
+elseif contains(topic_files(1).folder,'Pull')
+    pull = true;
+elseif contains(topic_files(1).folder,'Push')
+    push = true;
+else
+    error("Error: Improper Directory name. Make sure directory: " + data_dir.name +"contains either 'push', 'pull', or 'both'.")
+end
 %% Find Corresponding Survey Response
 subject_case = false;
 if contains(data_dir.name,'Subject')
