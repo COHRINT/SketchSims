@@ -12,9 +12,9 @@ drone_goal = '/Drone1/Goal';
 push_topic = '/Push';
 % constants
 time_conversion = 1e-9; % conversion from nanoseconds to seconds
-sketch_offset = [172,154,0];
-%sensitivity = 0.5; % probability cuttoff for accuracy
-%answer_buffer = 1; %[s] surrounding target location data to evaluate
+sketch_offset = [-167;-780];
+sensitivity = 0.5; % probability cuttoff for accuracy
+answer_buffer = 1; %[s] surrounding target location data to evaluate
 %% Intake Data files
 topic_files = dir(data_dir.folder+"\"+data_dir.name+"\*.csv");
 bags = struct();
@@ -34,16 +34,16 @@ n = length(bags);
 % pull, push, or both
 pull = false;
 push = false;
-% if contains(topic_files(1).folder,'Both')
-%     push = true;
-%     pull = true;
-% elseif contains(topic_files(1).folder,'Pull')
-%     pull = true;
-% elseif contains(topic_files(1).folder,'Push')
-%     push = true;
-% else
-%     error("Error: Improper Directory name. Make sure directory: " + data_dir.name +"contains either 'push', 'pull', or 'both'.")
-% end
+if contains(topic_files(1).folder,'Both')
+    push = true;
+    pull = true;
+elseif contains(topic_files(1).folder,'Pull')
+    pull = true;
+elseif contains(topic_files(1).folder,'Push')
+    push = true;
+else
+    error("Error: Improper Directory name. Make sure directory: " + data_dir.name +"contains either 'push', 'pull', or 'both'.")
+end
 %% Find Corresponding Survey Response
 subject_case = false;
 if contains(data_dir.name,'Subject')
@@ -110,8 +110,6 @@ for i=1:n
                 target_location(idx_nan,:) = [];
                 target_time(idx_nan) = [];
             end
-            % invert y axis and offset
-            target_location = target_location.*[1,-1,1] + sketch_offset;
         % isolate condition data and its rosbag time data
         case capture_topic
 %             conditions = string(bags(i).data.data);
@@ -172,18 +170,15 @@ for i=1:n
                 drone_location(idx_nan,:) = [];
                 drone_time(idx_nan) = [];
             end
-            % invert y axis and offset
-            drone_location = drone_location.*[1,-1,1] + sketch_offset;
         case push_topic
             push_time = bags(i).data.rosbagTimestamp-start_time;
             push_time = push_time.*time_conversion;
-            push_parsed = erase(erase(erase(erase(split(string(bags(i).data{:,2}),', '),']'),'['),' of'),"'");
-            push_det = push_parsed(:,1);
-            push_label = push_parsed(:,2);
+            push_det = string(bags(i).data{:,3});
+            push_label = string(bags(i).data{:,4});
             for j=1:length(push_label)
                 push_label_direction(j) = getLabelNum(push_label(j));
             end
-            push_sketch_name = push_parsed(:,3);
+            push_sketch_name = string(bags(i).data{:,5});
         otherwise
             fprintf("Unused topic: %s\n",bags(i).topic)
             continue
@@ -228,17 +223,14 @@ if pull && exist('pull_answer_counter','var')
     for i=1:length(pull_question_answered)
         pull_question_direction = getLabelNum(pull_question_answered(i));
         for j=1:length(sketch_name)
-            if contains(pull_question_answered_sketchnames(end),sketch_name(j))
+            if contains(pull_question_answered_sketchnames(1,i,end),sketch_name(j))
                 pull_question_sketch = j;
                 break
             end
         end
-        if ndims(pull_question_answered_sketchnames)<3
-            pulls(i) = pullCreate(pull_question_answered(i),pull_question_answered_sketchnames(6),pull_question_answered_sketchnames(4),pull_time(i),pull_question_sketch,pull_question_direction,pull_answer_time(i),response_time(i),pull_answer_response(i),i);
-        else
-            pulls(i) = pullCreate(pull_question_answered(i),pull_question_answered_sketchnames(1,i,6),pull_question_answered_sketchnames(1,i,4),pull_time(i),pull_question_sketch,pull_question_direction,pull_answer_time(i),response_time(i),pull_answer_response(i),i);
-        end
+        pulls(i) = pullCreate(pull_question_answered(i),pull_question_answered_sketchnames(1,i,6),pull_question_answered_sketchnames(1,i,4),pull_time(i),pull_question_sketch,pull_question_direction,pull_answer_time(i),response_time(i),pull_answer_response(i),i);
     end
+    
     % target location during question answer
     target_during_pull_answer = zeros(length(pull_answer_time),2);
     drone_during_pull_answer = zeros(length(pull_answer_time),2);
@@ -521,8 +513,6 @@ if subject_case
     elseif push && exist('push_sketch_name','var')
         save(file_name,'pushes','sketches','num_views','target_location','target_time','drone_location','drone_time','capture_time','subject_survey_data','subject_background','subject_survey_trust','total_accuracy_softmax','total_accuracy_compass','subject_survey_workload')
     end
-else
-    save(file_name,'target_location','target_time','drone_location','drone_time','capture_time')
 end
 end
 
@@ -624,7 +614,7 @@ function accuracyPlot(p,s)
     text(750,-750,textstr)
     title_str = p.Question + "; Answer: " + an;
     title(title_str)
-    xlim([0,1000])
-    ylim([0,1000])
+    xlim([-8,1000])
+    ylim([-1000,8])
     saveas(gcf,string(p.Number)+".png")
 end

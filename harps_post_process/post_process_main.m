@@ -10,7 +10,7 @@ sketches drawn, subject response time, number of camera views observed, etc
 
 Authors: Hunter Ray, Trevor Slack
 
-Date Modified: 6/16/2021
+Date Modified: 6/14/2021
 %}
 clear all; close all; clc;
 tic
@@ -27,7 +27,7 @@ f = waitbar(0,'Please wait...');
 for i=1:length(subject_directories)
     if ~(strcmp(subject_directories(i).name,'.')) && ~(strcmp(subject_directories(i).name,'..'))
         waitbar((i-1)/length(subject_directories),f,"Analyzing "+subject_directories(i).name);
-        if contains(subject_directories(i).name,'Robot')
+        if contains(subject_directories(i).name,'Subject')
             postProcessROSbag(subject_directories(i));
         end
     end  
